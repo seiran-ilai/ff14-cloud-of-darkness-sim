@@ -1,0 +1,12 @@
+/* 色票、字體與全域基礎樣式 */
+:root{
+  --bg:#0c0a14; --panel:#16131f; --panel-2:#211c2f; --line:#352e4a; --fg:#eeeaf6; --muted:#a59ec0;
+  --gold:#e9b949; --gold-2:#ffdf8a; --accent:#b99cff; --ok:#43df9f; --ng:#ff5d6c; --blue:#5cc8ff;
+  --f-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  --f-display:"Noto Serif TC","Songti TC",serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--f-body);font-size:14.5px;line-height:1.6}

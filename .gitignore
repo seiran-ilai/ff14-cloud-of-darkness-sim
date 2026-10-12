@@ -1,0 +1,5 @@
+node_modules/
+dist/
+*.log
+# 給 Claude Code 的工作指令，不放進公開 repo
+prompt-*.md

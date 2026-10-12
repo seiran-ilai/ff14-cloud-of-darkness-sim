@@ -1,0 +1,61 @@
+/* 遊戲舞台：canvas 與疊在上面的 HUD、技能列、覆蓋層 */
+.stage{position:relative;width:100%;max-width:min(820px,max(440px,calc(100vh - 270px)));margin:0 auto;aspect-ratio:1/1;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:#06050b;user-select:none;-webkit-user-select:none}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:crosshair}
+.hud{position:absolute;pointer-events:none;font-family:var(--f-body)}
+/* 詠唱條（仿遊戲：技能名在左、剩餘秒數在右，下方細長金色條） */
+.castwrap{top:12px;left:50%;transform:translateX(-50%);width:min(56%,420px);display:flex;flex-direction:column;gap:2px}
+.casthead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:0 2px}
+.castname{font-weight:900;font-size:15px;letter-spacing:.04em;text-shadow:0 1px 3px #000,0 0 6px #000;color:#fff}
+.casttime{font-size:13px;font-weight:700;color:var(--gold-2);font-variant-numeric:tabular-nums;text-shadow:0 1px 2px #000}
+.castbar{width:100%;height:9px;border-radius:2px;background:rgba(0,0,0,.7);border:1px solid rgba(233,185,73,.75);box-shadow:0 0 6px rgba(0,0,0,.8);overflow:hidden}
+.castbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#9c6a1c,#e9b949 70%,#fff2c2);box-shadow:0 0 8px rgba(255,214,120,.8)}
+/* 王台詞對話框 */
+.bossline{bottom:160px;left:50%;transform:translateX(-50%);width:min(86%,520px);display:flex;flex-direction:column;gap:2px;font-size:15px;font-weight:700;color:#fff;background:linear-gradient(rgba(22,16,38,.92),rgba(10,8,18,.92));border:1px solid rgba(233,185,73,.55);border-radius:6px;padding:7px 14px 9px;box-shadow:0 4px 16px rgba(0,0,0,.6)}
+.bossline .who{font-size:12px;color:var(--gold-2);letter-spacing:.1em}
+.alert{top:58px;left:50%;transform:translateX(-50%);font-size:clamp(18px,3vw,26px);font-weight:900;color:var(--gold-2);text-shadow:0 0 2px #000,0 2px 8px #000,0 0 18px rgba(0,0,0,.8);white-space:nowrap}
+.alert.danger{color:#ff9aa4}
+/* 增減益圖示列：自己的減益放大、紅框，剩 5 秒內閃爍 */
+.status{top:10px;left:10px;display:flex;flex-wrap:wrap;align-items:flex-start;gap:6px;max-width:38%}
+.ico{display:flex;flex-direction:column;align-items:center;width:36px}
+.ico b{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;font-size:16px;font-weight:900;color:#fff;text-shadow:0 1px 2px #000}
+.ico span{font-size:12px;font-weight:700;font-variant-numeric:tabular-nums;color:#fff;text-shadow:0 1px 2px #000,0 0 4px #000}
+.ico em{font-style:normal;font-size:10.5px;color:var(--muted);white-space:nowrap;text-shadow:0 1px 2px #000}
+.ico.buff b{background:linear-gradient(#2f8a63,#185a3e);border:1px solid #7ef0c0}
+.ico.debuff b{background:linear-gradient(#7a2a9c,#3c1252);border:1px solid #d79bff}
+.ico.mine{width:46px}
+.ico.mine b{width:42px;height:42px;font-size:20px;border:2px solid #ff5d6c;box-shadow:0 0 0 2px rgba(255,93,108,.35),0 0 12px rgba(255,93,108,.6)}
+.ico.mine span{font-size:14px;color:#ffd4d9}
+.ico.urgent b{animation:urgent .5s steps(2) infinite}
+@keyframes urgent{50%{box-shadow:0 0 0 3px #ff5d6c,0 0 18px #ff5d6c}}
+@media (prefers-reduced-motion:reduce){.ico.urgent b{animation:none}}
+/* 回放 */
+.replay{left:50%;bottom:12px;transform:translateX(-50%);width:min(90%,460px);background:rgba(10,8,18,.88);border:1px solid var(--accent);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;pointer-events:auto}
+.rphead{display:flex;justify-content:space-between;gap:10px;font-size:13.5px}
+.rphead span{color:var(--muted);font-variant-numeric:tabular-nums}
+.rpbar{height:6px;border-radius:3px;background:var(--panel-2);overflow:hidden}
+.rpbar i{display:block;height:100%;width:0;background:var(--accent)}
+.checks li button{all:unset;cursor:pointer;display:block;border-radius:6px;padding:0 4px;margin:0 -4px}
+.checks li button:hover,.checks li button:focus-visible{background:var(--panel-2);outline:1px solid var(--accent)}
+.checks .rp{color:var(--accent);font-size:12px;margin-left:6px;white-space:nowrap}
+.endseed{font-size:12.5px;color:var(--muted)}
+.endseed b{color:var(--fg);font-variant-numeric:tabular-nums}
+.tr{top:10px;right:10px;font-size:12px;color:var(--muted);text-align:right;background:rgba(10,8,18,.6);border-radius:7px;padding:3px 8px;display:flex;flex-direction:column;gap:1px}
+.tr b{color:var(--fg);font-variant-numeric:tabular-nums}
+.toast{bottom:78px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:4px}
+.toast div{background:rgba(70,14,26,.86);border:1px solid var(--ng);color:#ffd4d9;font-weight:700;font-size:13px;border-radius:8px;padding:3px 10px;white-space:nowrap}
+.bar{bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:6px;pointer-events:auto}
+.slot{position:relative;width:56px;height:56px;border-radius:10px;border:1px solid #6b5a2c;background:linear-gradient(#2a2337,#16121f);color:var(--fg);font:inherit;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px;overflow:hidden}
+.slot b{font-size:12px;line-height:1.15;text-align:center}
+.slot kbd{position:absolute;top:2px;left:4px;font-size:10.5px;color:var(--gold-2);font-family:var(--f-body)}
+.slot .cd{position:absolute;inset:0;background:conic-gradient(rgba(0,0,0,.72) var(--p,0%),transparent 0);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:#fff;text-shadow:0 1px 2px #000}
+.slot.active{box-shadow:0 0 0 2px var(--ok) inset}
+.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(6,5,11,.62);pointer-events:auto}
+.ocard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;width:min(92%,500px);display:flex;flex-direction:column;gap:10px;max-height:92%;overflow:auto}
+.ocard h2{margin:0;font-family:var(--f-display);font-size:24px}
+.ocard.ok h2{color:var(--ok)} .ocard.ng h2{color:var(--ng)}
+.checks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px}
+.checks li{display:flex;gap:8px;align-items:flex-start;font-size:13.5px}
+.checks li::before{content:"";flex:none;width:10px;height:10px;border-radius:50%;margin-top:6px;background:var(--ok)}
+.checks li.ng::before{background:var(--ng)} .checks li.warn::before{background:var(--gold)}
+.checks .tg{color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.count{font-family:var(--f-display);font-size:96px;color:var(--gold-2);text-shadow:0 4px 18px #000}

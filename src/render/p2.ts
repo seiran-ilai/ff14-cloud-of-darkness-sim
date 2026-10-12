@@ -1,0 +1,94 @@
+// P2 華容道繪製：環狀地板、平臺、井字格子（站立計時、變紅、消失）、塔、王與小王
+import { P2 } from '../core/tuning';
+import { CELLS, sbPos, sbFacing, cellUnder } from '../core/p2';
+import { dirV } from '../core/geometry';
+import type { RenderState } from '../game/state';
+import { px, text, circle } from './canvas';
+
+export function drawP2Field(c: CanvasRenderingContext2D, G: RenderState): void {
+  const s = G.p2!;
+  c.fillStyle = '#07060d';
+  c.fillRect(-90, -90, 180, 180);
+  // 環狀地板（出血中變紅）
+  const bleed = s.bleedUntil > G.t;
+  c.beginPath();
+  c.arc(0, 0, P2.ring1, 0, Math.PI * 2);
+  c.arc(0, 0, P2.ring0, 0, Math.PI * 2, true);
+  c.fillStyle = bleed ? 'rgba(150,30,50,.55)' : '#2a2240';
+  c.fill('evenodd');
+  c.strokeStyle = bleed ? '#ff5d6c' : '#8c79c4'; c.lineWidth = px(1.5);
+  circle(c, 0, 0, P2.ring0); c.stroke(); circle(c, 0, 0, P2.ring1); c.stroke();
+  if (bleed) text(c, '出血', 0, -(P2.ring0 + P2.ring1) / 2, 12, '#ff9aa4', 700);
+  // 平臺
+  [-1, 1].forEach((side) => {
+    c.fillStyle = '#3a2f55';
+    c.fillRect(side < 0 ? -P2.px1 : P2.px0, -P2.ph, P2.px1 - P2.px0, P2.ph * 2);
+    c.strokeStyle = '#8c79c4'; c.lineWidth = px(2);
+    c.strokeRect(side < 0 ? -P2.px1 : P2.px0, -P2.ph, P2.px1 - P2.px0, P2.ph * 2);
+  });
+  // 格子
+  const me = G.ents.indexOf(G.player), myCell = cellUnder(G.player);
+  CELLS.forEach((cell) => {
+    const cs = s.cells[cell.idx];
+    const g = 0.12;
+    if (cs.goneUntil !== null) {
+      c.setLineDash([px(4), px(4)]); c.strokeStyle = 'rgba(255,93,108,.6)'; c.lineWidth = px(1.5);
+      c.strokeRect(cell.x0 + g, cell.y0 + g, P2.cell - 2 * g, P2.cell - 2 * g); c.setLineDash([]);
+      return;
+    }
+    const red = cs.doomAt !== null || cs.stand >= P2.standRed;
+    const k = Math.min(1, cs.stand / P2.standRed);
+    c.fillStyle = red ? (Math.floor(G.t * 6) % 2 ? '#b8323f' : '#7a1f2a') : `rgb(${58 + k * 60},${50 + k * 10},${80 - k * 30})`;
+    c.fillRect(cell.x0 + g, cell.y0 + g, P2.cell - 2 * g, P2.cell - 2 * g);
+    c.strokeStyle = cell.cross ? '#b4a3e6' : '#6d5a92'; c.lineWidth = px(cell.cross ? 1.6 : 1);
+    c.strokeRect(cell.x0 + g, cell.y0 + g, P2.cell - 2 * g, P2.cell - 2 * g);
+    // 自己站的格子顯示站立秒數
+    if (myCell === cell && cs.who === me && cs.stand > 0) text(c, cs.stand.toFixed(0), cell.cx, cell.cy + 1.3, 11, red ? '#ffd4d9' : '#e8e0ff', 700);
+  });
+  // 內場塔（圓形紋路）
+  s.innerTowers.forEach((t) => t.cells.forEach((i) => {
+    const cell = CELLS[i];
+    c.strokeStyle = t.need === 2 ? '#ffd36b' : '#8bdcff'; c.lineWidth = px(2.5);
+    circle(c, cell.cx, cell.cy, 1.3); c.stroke();
+    circle(c, cell.cx, cell.cy, 0.7); c.stroke();
+    text(c, String(t.need), cell.cx, cell.cy, 11, '#fff');
+  }));
+  if (s.innerTowers.length) s.innerTowers.filter((t) => t.cells.length === 2).forEach((t) => {
+    const a = CELLS[t.cells[0]], b = CELLS[t.cells[1]];
+    c.strokeStyle = 'rgba(255,211,107,.7)'; c.lineWidth = px(2); c.setLineDash([px(3), px(3)]);
+    c.beginPath(); c.moveTo(a.cx, a.cy); c.lineTo(b.cx, b.cy); c.stroke(); c.setLineDash([]);
+  });
+  // 外場三人塔
+  s.outerTowers.forEach((t) => {
+    c.fillStyle = 'rgba(139,220,255,.18)'; c.strokeStyle = '#8bdcff'; c.lineWidth = px(2.5);
+    circle(c, t.x, t.y, t.r); c.fill(); c.stroke();
+    text(c, String(t.need), t.x, t.y, 12, '#fff');
+  });
+}
+
+/** 王（中央）與兩隻小王（平臺上，面向場外；特效：左右觸手、雙手、身體中心） */
+export function drawP2Bosses(c: CanvasRenderingContext2D, G: RenderState): void {
+  c.fillStyle = 'rgba(120,80,200,.18)'; circle(c, 0, 0, 4.5); c.fill();
+  c.fillStyle = '#120d1e'; circle(c, 0, 0, 3); c.fill();
+  c.strokeStyle = '#b99cff'; c.lineWidth = px(2); c.stroke();
+  text(c, '暗黑之雲', 0, 0, 12, '#eae4fb');
+  G.p2!.sb.forEach((b) => {
+    const p = sbPos(b.side), f = dirV(sbFacing(b.side)), r = { x: -f.y, y: f.x };
+    const glowL = b.glow === 'L' || b.glow === 'B', glowR = b.glow === 'R' || b.glow === 'B';
+    // 觸手：左右兩隻
+    [[-1, glowL], [1, glowR]].forEach(([s, on]) => {
+      const sg = s as number;
+      const ex = p.x + r.x * sg * 2.6 + f.x * 1.2, ey = p.y + r.y * sg * 2.6 + f.y * 1.2;
+      c.strokeStyle = on ? '#ffd36b' : '#6d5a92'; c.lineWidth = px(5); c.lineCap = 'round';
+      c.beginPath(); c.moveTo(p.x + r.x * sg * 1.2, p.y + r.y * sg * 1.2); c.lineTo(ex, ey); c.stroke();
+      if (on) { c.fillStyle = '#fff2c2'; circle(c, ex, ey, 0.8); c.fill(); }
+    });
+    c.fillStyle = b.glow === 'C' ? '#3b1b4f' : '#1a1226'; circle(c, p.x, p.y, 1.6); c.fill();
+    c.strokeStyle = '#c05bff'; c.lineWidth = px(2); c.stroke();
+    if (b.glow === 'C') { c.fillStyle = 'rgba(30,10,40,.6)'; circle(c, p.x, p.y, 2.6 + 0.3 * Math.sin(G.t * 8)); c.fill(); c.fillStyle = '#ff9bff'; circle(c, p.x, p.y, 0.6); c.fill(); }
+    // 面向
+    c.fillStyle = '#c05bff';
+    c.beginPath(); c.moveTo(p.x + f.x * 2.6, p.y + f.y * 2.6); c.lineTo(p.x + f.x * 1.6 + r.x * 0.7, p.y + f.y * 1.6 + r.y * 0.7); c.lineTo(p.x + f.x * 1.6 - r.x * 0.7, p.y + f.y * 1.6 - r.y * 0.7); c.closePath(); c.fill();
+    text(c, '小王', p.x, p.y - 3.4, 11, '#e2c6ff', 700);
+  });
+}
