@@ -103,7 +103,7 @@ export function embraceCast(G: GameState, t0: number, durs: number[], opt: Embra
         const m = my as { face: number; H: number; ed: number; outOk: boolean } | null;
         if (!m) bad(G, tag, '減益結束前已陣亡', fix());
         else {
-          good(G, tag, `手勢：${type === 'scoop' ? '下方撈起（手與你同向，從背後打）' : '上方包覆（手與你反向，從面前打）'}`, fix());
+          good(G, tag, `手勢：${type === 'scoop' ? '🫴 右手撈起（王的左手在身後）：手出現在你後方' : '🫳 右手包覆（王的左手在身前）：手出現在你前方'}`, fix());
           if (m.ed <= EMBRACE.edgeOk) good(G, tag, `在外周處理（離場邊 ${m.ed.toFixed(1)} m）`, fix());
           else bad(G, tag, `離場邊 ${m.ed.toFixed(1)} m，沒有到外周`, fix());
           const ft = `你面向${DIRNAME(m.face)}，手朝${DIRNAME(m.H)}打`;

@@ -12,6 +12,23 @@ import { aero } from '../mechanics/aero';
 import { death } from '../mechanics/death';
 import { beam } from '../mechanics/beam';
 import { deluge } from '../mechanics/deluge';
+import { greatDeluge } from '../mechanics/greatDeluge';
+import { at } from '../game/state';
+import { OPENER } from '../core/tuning';
+
+/** 開場（準備階段，docs 第 1 節）：3 次暗之刃（攻擊方式不重複）→ 暗之大泛濫進入魔法陣 */
+export const opener: Drill = {
+  tl: true,
+  name: '開場',
+  sub: '暗之刃×3 → 暗之大泛濫',
+  brief: '準備階段：暗之刃 3 次，攻擊方式一定不重複。單手舉刀＝站到沒舉手那一側的王前方圓形安全區；雙手舉刀構於身前＝離開王腳下。之後暗之大泛濫：大傷害全場 AOE，附加 15 秒出血，場地變成魔法陣（P1）。',
+  setup(G) {
+    const modes = G.rng.shuffle<BladeMode>(['L', 'R', 'B']);
+    OPENER.blades.forEach((t, i) => { blade(G, t, modes[i]); seqAdd(G, t, '暗之刃'); });
+    const end = greatDeluge(G, OPENER.deluge, '進入魔法陣階段');
+    at(G, end + 2, () => { G.endT = G.t; });
+  },
+};
 
 export const tl1: Drill = {
   tl: true,

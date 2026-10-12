@@ -28,8 +28,8 @@ export interface Config {
   hint: boolean;
   text: boolean;
   tele: boolean;
-  /** 時間軸中陣亡後繼續 */
-  cont: boolean;
+  /** 模式：stop＝錯誤即停（犯錯立刻停下分析）、continue＝錯誤不停（打完整段，陣亡也繼續） */
+  failMode: 'stop' | 'continue';
   /** 單練陰冷擁抱的減益長度 */
   dur: number;
   cdReset: boolean;
@@ -54,7 +54,7 @@ export const DEFAULT_ACTS: readonly ActionConfig[] = [
 export const cloneActs = (a: readonly ActionConfig[]): ActionConfig[] => JSON.parse(JSON.stringify(a));
 
 export function defaultConfig(): Config {
-  return { auto: true, speed: 1, hint: true, text: true, tele: true, cont: true, dur: 14, cdReset: true, cam: 'fixed', sound: true, acts: cloneActs(DEFAULT_ACTS), al: 'A', role: 'D3', drill: 'tl1' };
+  return { auto: true, speed: 1, hint: true, text: true, tele: true, failMode: 'stop', dur: 14, cdReset: true, cam: 'fixed', sound: true, acts: cloneActs(DEFAULT_ACTS), al: 'A', role: 'D3', drill: 'tl1' };
 }
 
 export function loadConfig(): Config {
@@ -65,7 +65,7 @@ export function loadConfig(): Config {
     hint: store.get('hint', d.hint),
     text: store.get('text', d.text),
     tele: store.get('tele', d.tele),
-    cont: store.get('cont', d.cont),
+    failMode: store.get('failMode', d.failMode),
     dur: store.get('dur', d.dur),
     cdReset: store.get('cdReset', d.cdReset),
     cam: store.get('cam', d.cam),

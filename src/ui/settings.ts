@@ -12,7 +12,7 @@ let capturing = -1;
 
 export const isSettingsOpen = (): boolean => !$('modal').hidden;
 
-function onoff(cfg: Config, el: HTMLElement, key: 'auto' | 'hint' | 'text' | 'tele' | 'cont' | 'cdReset' | 'sound'): void {
+function onoff(cfg: Config, el: HTMLElement, key: 'auto' | 'hint' | 'text' | 'tele' | 'cdReset' | 'sound'): void {
   seg(el, ['on', 'off'], cfg[key] ? 'on' : 'off', (v) => { cfg[key] = v === 'on'; saveConfig(cfg); renderSettings(cfg); }, (v) => (v === 'on' ? '開' : '關'));
 }
 
@@ -23,7 +23,7 @@ export function renderSettings(cfg: Config): void {
   onoff(cfg, $('setHint'), 'hint');
   onoff(cfg, $('setText'), 'text');
   onoff(cfg, $('setTele'), 'tele');
-  onoff(cfg, $('setCont'), 'cont');
+  seg($('setMode'), ['stop', 'continue'], cfg.failMode, (v) => { cfg.failMode = v as Config['failMode']; saveConfig(cfg); renderSettings(cfg); }, (v) => (v === 'stop' ? '錯誤即停' : '錯誤不停'));
   onoff(cfg, $('setCd'), 'cdReset');
   seg($('setSpeed'), [0.6, 0.8, 1], cfg.speed, (v) => { cfg.speed = +v; saveConfig(cfg); renderSettings(cfg); }, (v) => v + 'x');
   seg($('setDur'), [10, 14, 20, 30], cfg.dur, (v) => { cfg.dur = +v; saveConfig(cfg); renderSettings(cfg); }, (v) => v + ' 秒');

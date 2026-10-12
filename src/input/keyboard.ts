@@ -13,7 +13,7 @@ export function bindKeyboard(session: Session): void {
     if (isSettingsOpen()) return;
     const t = e.target as HTMLElement | null;
     if (t && t.closest && t.closest('input,select')) return;
-    if (MOVE.includes(e.code)) { input.keys.add(e.code); e.preventDefault(); return; }
+    if (MOVE.includes(e.code)) { input.keys.add(e.code); input.moveTo = null; e.preventDefault(); return; }
     const i = cfg.acts.findIndex((a) => a.code && a.code === e.code);
     if (i >= 0) { e.preventDefault(); if (!e.repeat) session.useAct(i); return; }
     const G = session.G;
@@ -22,7 +22,8 @@ export function bindKeyboard(session: Session): void {
     if (e.code === 'KeyR') { session.newGame(); return; }
     if (e.code === 'KeyT') { session.newGame(true); return; }
     if (e.code === 'KeyF' && G) { G.ff = !G.ff; return; }
-    if (e.code === 'Enter' && G && G.state === 'end') { session.newGame(); return; }
+    if ((e.code === 'Enter' || e.code === 'Space') && G && G.state === 'ready') { e.preventDefault(); session.start(); return; }
+    if (e.code === 'Enter' && G && G.state === 'end' && !G.stopCheck) { session.newGame(); return; }
   });
   window.addEventListener('keyup', (e) => input.keys.delete(e.code));
   window.addEventListener('blur', () => { input.keys.clear(); input.rmb = false; session.pause(); });

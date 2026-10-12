@@ -41,64 +41,41 @@ export function drawBoss(c: CanvasRenderingContext2D, G: GameState, cfg: Config)
 export const activePose = (G: GameState): EmbraceType | null =>
   G.poses.filter((p) => G.t >= p.from && G.t <= p.to).sort((a, b) => a.to - b.to)[0]?.type ?? null;
 
+/** 手勢文字（依攻略原文） */
+export const POSE_TEXT: Record<EmbraceType, { icon: string; name: string; left: string; how: string }> = {
+  cover: { icon: '🫳', name: '右手包覆（手心向下）', left: '王的左手伸到身前', how: '手從上方包覆：手出現在你前方 → 面向場內一路往前走' },
+  scoop: { icon: '🫴', name: '右手撈起（手心向上）', left: '王的左手伸到身後', how: '手從下方撈起：手出現在你後方 → 結束時面向外，手出現後再轉身往內走' },
+};
+
+const EMOJI_FONT = '"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
+
 /**
- * 陰冷擁抱手勢：王的右手捏住心臟。
- * 包覆＝掌心朝向玩家：畫「手心」（淺色、掌紋、指腹），手從上方往下蓋住心臟。
- * 撈起＝手背朝向玩家：畫「手背」（深色、金色指節、指甲），手從下方往上撈起心臟。
+ * 陰冷擁抱手勢（依攻略）：
+ * 🫳 右手包覆＝手心向下蓋住心臟，王的左手伸到身前；🫴 右手撈起＝手心向上托住心臟，王的左手伸到身後。
+ * inset＝跟隨鏡頭右上角的小窗：只畫圖示，不畫手臂與說明。
  */
-export function drawPose(c: CanvasRenderingContext2D, type: EmbraceType, cfg: Config, label = true): void {
-  const hx = BOSS.x, hy = BOSS.y + 8;
-  const palm = type === 'cover';
-  // dir：手指指向（1 往南蓋下、−1 往北撈起）；以心臟為中心放大 1.4 倍畫
-  const dir = palm ? 1 : -1, cx = 0, cy = -dir * 2.1;
+export function drawPose(c: CanvasRenderingContext2D, type: EmbraceType, cfg: Config, inset = false): void {
+  const hx = BOSS.x, hy = BOSS.y + 8, T = POSE_TEXT[type];
   c.save();
-  c.translate(hx, hy);
-  c.scale(1.4, 1.4);
-  c.lineJoin = 'round';
-  const skin = palm ? '#f3d2a2' : '#6a5a92', edge = palm ? '#b9875a' : '#ffd36b';
-  const thin = px(1.5) / 1.4;
-  /** 膠囊形（手指、拇指）：先畫外框色粗線再畫膚色細線 */
-  const capsule = (x0: number, y0: number, x1: number, y1: number, w: number): void => {
-    c.lineCap = 'round';
-    [[edge, w + thin * 2], [skin, w]].forEach(([col, lw]) => {
-      c.strokeStyle = col as string; c.lineWidth = lw as number;
-      c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke();
-    });
-  };
-  // 手指
-  const fingers = [-1.05, -0.35, 0.35, 1.05];
-  const tips: [number, number, number, number][] = [];
-  fingers.forEach((ox, i) => {
-    const len = i === 0 || i === 3 ? 1.6 : 2.0;
-    const x0 = cx + ox * 0.95, y0 = cy + dir * 0.6, x1 = cx + ox * 1.05, y1 = y0 + dir * len;
-    capsule(x0, y0, x1, y1, 0.62);
-    tips.push([x0, y0, x1, y1]);
-  });
-  // 拇指
-  capsule(cx - 1.2, cy + dir * 0.2, cx - 1.95, cy + dir * 1.3, 0.62);
-  // 手掌
-  c.fillStyle = skin; c.strokeStyle = edge; c.lineWidth = thin;
-  c.beginPath(); c.ellipse(cx, cy, 1.55, 1.25, 0, 0, Math.PI * 2); c.fill(); c.stroke();
-  tips.forEach(([x0, y0, x1, y1]) => {
-    if (palm) { c.fillStyle = '#f9e3c4'; circle(c, x1, y1, 0.2); c.fill(); }
-    else {
-      // 手背：指尖的指甲＋指根的金色指節
-      c.fillStyle = '#f0d8e6'; c.beginPath(); c.ellipse(x1, y1 - dir * 0.05, 0.18, 0.24, 0, 0, Math.PI * 2); c.fill();
-      c.fillStyle = '#ffd36b'; circle(c, x0, y0, 0.19); c.fill();
-    }
-  });
-  if (palm) {
-    // 掌紋
-    c.strokeStyle = '#b9875a'; c.lineWidth = px(1.3);
-    c.beginPath(); c.arc(cx - 0.2, cy + dir * 0.9, 1.0, dir > 0 ? Math.PI * 1.15 : Math.PI * 0.15, dir > 0 ? Math.PI * 1.75 : Math.PI * 0.75); c.stroke();
-    c.beginPath(); c.moveTo(cx - 1.0, cy - 0.2); c.quadraticCurveTo(cx, cy + dir * 0.3, cx + 1.1, cy - 0.1); c.stroke();
-  } else {
-    // 手背：骨節線
-    c.strokeStyle = 'rgba(255,211,107,.6)'; c.lineWidth = px(1.2);
-    fingers.forEach((ox) => { c.beginPath(); c.moveTo(cx + ox * 0.6, cy - dir * 0.7); c.lineTo(cx + ox, cy + dir * 0.85); c.stroke(); });
+  if (!inset) {
+    // 王的左手（王面向南，左手在畫面右側＝東）：伸到身前（南）或身後（北）
+    const front = type === 'cover';
+    const sx = BOSS.x + 3.8, sy = BOSS.y + 0.3, ex = BOSS.x + 7.2, ey = BOSS.y + (front ? 6.5 : -6.5);
+    c.strokeStyle = '#e9b949'; c.lineWidth = px(7); c.lineCap = 'round';
+    c.beginPath(); c.moveTo(sx, sy); c.quadraticCurveTo(BOSS.x + 7.5, BOSS.y, ex, ey); c.stroke();
+    c.fillStyle = '#ffd36b'; circle(c, ex, ey, 1.2); c.fill();
+    text(c, front ? '左手・身前' : '左手・身後', ex + 3.6, ey, 12, '#ffd36b', 700);
   }
+  // 右手手勢圖示，畫在心臟上
+  c.font = `${px(inset ? 64 : 46)}px ${EMOJI_FONT}`;
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText(T.icon, hx, hy);
   c.restore();
-  if (cfg.text && label) text(c, palm ? '包覆（手心朝你）' : '撈起（手背朝你）', hx + 10.5, hy, 14, '#ffd36b');
+  if (!inset && cfg.text) {
+    text(c, `${T.icon} ${T.name}`, hx, hy + 4.3, 14, '#ffd36b');
+    text(c, `${T.left}`, hx, hy + 6.6, 12, '#ffe6a3', 700);
+    text(c, T.how, hx, hy + 8.6, 11.5, '#eadff9', 700);
+  }
 }
 
 export function drawClouds(c: CanvasRenderingContext2D, G: GameState, cfg: Config): void {

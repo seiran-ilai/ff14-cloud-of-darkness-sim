@@ -11,7 +11,7 @@ export type BladeMode = 'L' | 'R' | 'B';
 export type StoredKind = 'aero' | 'death';
 export type LaneFam = 'U' | 'V';
 
-export interface Buffs { sprint?: number; akb?: number; heavy?: number }
+export interface Buffs { sprint?: number; akb?: number; heavy?: number; bleed?: number }
 export interface EmbraceDebuff { exp: number; type: EmbraceType }
 export interface Forced { vx: number; vy: number; left: number }
 /** 移動目標；emb 標記是哪一次陰冷擁抱設的臨時目標 */
@@ -77,7 +77,8 @@ export type Effect =
 
 /** 正確處理方式（回放時標出）：位置、可選的正確面向 */
 export interface Fix { x: number; y: number; r?: number; face?: number; label: string }
-export interface Check { t: number; tag: string; ok: boolean; warn?: boolean; text: string; fix?: Fix }
+/** from：要「從此機制開始」練時的起點秒數 */
+export interface Check { t: number; tag: string; ok: boolean; warn?: boolean; text: string; fix?: Fix; from?: number }
 export interface Hint { x: number; y: number; r?: number; label?: string; cells?: boolean }
 /** Bot（非玩家）違反規則被打中的紀錄：自動測試要求為 0 */
 export interface BotFail { t: number; tag: string; who: string; why: string }
@@ -100,7 +101,8 @@ export interface Extra {
   beam?: Record<Alliance, Entity>;
 }
 
-export type Phase = 'count' | 'run' | 'end';
+/** ready＝等玩家按「開始」；count＝倒數；run＝進行中；end＝結束 */
+export type Phase = 'ready' | 'count' | 'run' | 'end';
 
 export interface GameState {
   t: number;
@@ -145,6 +147,8 @@ export interface GameState {
   mech: Record<string, boolean>;
   /** P2 華容道（沒有就是 P1 菱形場地） */
   p2?: P2State;
+  /** 錯誤即停：讓這局停下來的那個失誤 */
+  stopCheck?: Check;
 }
 
 /** 渲染只需要的部分狀態（回放時用錄下來的影格組出同樣的形狀） */
@@ -169,7 +173,7 @@ export function createState(cfg: Config, auto: boolean, rng: Rng, drill: Drill):
   const ents: Entity[] = [];
   ALS.forEach((al) => ROLES.forEach((role) => ents.push(mkEnt(al, role, al === cfg.al && role === cfg.role))));
   return {
-    t: 0, state: 'count', countT: 3, ents, player: ents.find((e) => e.isPlayer)!, ev: new Scheduler(), tele: [], fx: [], cast: null, line: null, alert: null, toasts: [],
+    t: 0, state: auto ? 'count' : 'ready', countT: 3, ents, player: ents.find((e) => e.isPlayer)!, ev: new Scheduler(), tele: [], fx: [], cast: null, line: null, alert: null, toasts: [],
     auto: !!auto, checks: [], fails: [], endT: 9999, hints: [], embHint: null, poses: [], extra: {}, paused: false, cds: {}, tl: !!drill.tl, seq: [], stored: null, ff: false,
     cfg, rng, sfx: [], botFails: [], startAt: 0, mech: {},
   };

@@ -1,11 +1,11 @@
 import type { Drill } from '../game/state';
 import { at, seqAdd } from '../game/state';
-import { tl1, tl2 } from './timelines';
+import { opener, tl1, tl2 } from './timelines';
 import { singles } from './singles';
 import { p2 } from './p2';
 
 /** 所有練習項目；順序即畫面上按鈕順序 */
-export const DRILLS: Record<string, Drill> = { tl1, tl2, ...singles, ...p2 };
+export const DRILLS: Record<string, Drill> = { opener, tl1, tl2, ...singles, ...p2 };
 
 /** 弱點練習的 key 前綴：weak:volley,embrace */
 export const WEAK_PREFIX = 'weak:';

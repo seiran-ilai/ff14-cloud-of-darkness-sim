@@ -2,7 +2,11 @@
 import type { Drill } from '../game/state';
 import { at, alertMsg, seqAdd } from '../game/state';
 import { good, warn } from '../game/results';
-import { zoneOf } from '../core/p2';
+import { zoneOf, p2Home } from '../core/p2';
+import { npcs } from '../game/bots';
+import { hurtPlayer } from '../game/results';
+import { p2Walkable } from '../game/p2state';
+import { greatDeluge } from '../mechanics/greatDeluge';
 import { enterP2 } from '../mechanics/p2/enter';
 import { domain } from '../mechanics/p2/domain';
 import { triple } from '../mechanics/p2/triple';
@@ -16,14 +20,27 @@ export const p2: Record<string, Drill> = {
     group: 'p2',
     name: 'P2 開場',
     sub: '深暗領域 → 戰技＋塔',
-    brief: '進入華容道：內場 12 人（B 聯盟＋A/C 的 ST、H1）、西平臺 A、東平臺 C。深暗領域後環狀地板會出血，留在平臺或格子上。'
+    brief: '暗之大泛濫詠唱時先跑到華容道的站位（綠圈），場地變化時腳下沒有地板會掉下去。'
+      + '內場 12 人（B 聯盟＋A/C 的 ST、H1）、西平臺 A、東平臺 C。深暗領域後環狀地板會出血，留在平臺或格子上。'
       + '小王的三重暗之戰技一定是「單手 → 單手／雙手／黑霧 → 單手／雙手／黑霧」：單手球躲到沒球那半邊；雙手球 MT＋H2、D1＋D3、D2＋D4 分攤；黑霧照相對方向散開。'
       + '內場 B 聯盟 H1/H2/D1/D2 站在格子內偏本體側。三擊結束後踩波動球的塔：內場踩自己角落的塔格，外場 MT/D1/D3 踩 12／9 點、H2/D2/D4 踩 6／3 點。',
     setup(G) {
-      enterP2(G);
-      domain(G, 1);
-      const last = triple(G, 6);
-      const end = waveball(G, 6, last);
+      const P = G.player;
+      // 暗之大泛濫：詠唱中先跑到華容道站位，詠唱完場地才變化
+      at(G, 1, () => {
+        npcs(G).forEach((e) => { e.mt = p2Home(e.al, e.role); e.buffs.sprint = G.t + 7; });
+        if (!G.auto) G.hints = [{ ...p2Home(P.al, P.role), r: 1.2, label: '華容道站位' }];
+      });
+      const tF = greatDeluge(G, 1, '進入華容道', () => {
+        enterP2(G, true);
+        G.hints = [];
+        if (!P.dead && !p2Walkable(G.p2!, P)) {
+          hurtPlayer(G, '暗之大泛濫', '場地變化時沒有站在華容道的地板上，掉了下去', true, { ...p2Home(P.al, P.role), r: 1.2, label: '你的華容道站位' });
+        }
+      });
+      domain(G, tF + 1);
+      const last = triple(G, tF + 6);
+      const end = waveball(G, tF + 6, last);
       at(G, end + 1.5, () => { G.endT = G.t; });
     },
   },

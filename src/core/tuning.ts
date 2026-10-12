@@ -126,6 +126,12 @@ export const BEAM = {
 
 export const DELUGE = { cast: 4 } as const;
 
+/** 暗之大泛濫：詠唱秒數（估計）；出血 15 秒（docs） */
+export const GREAT_DELUGE = { cast: 6, bleed: 15 } as const;
+
+/** 開場準備階段：3 次暗之刃的起點（估計） */
+export const OPENER = { blades: [3, 12, 21], deluge: 30 } as const;
+
 // ===================== P2 華容道 =====================
 // 場地形狀依攻略示意圖判讀（docs/p2-strategy.md），尺寸全部是估計。
 

@@ -13,6 +13,7 @@ function icons(G: GameState): Icon[] {
   P.embs.slice().sort((a, c) => a.exp - c.exp).forEach((m) => out.push({ glyph: '擁', name: '暗之擁抱', left: m.exp - G.t, kind: 'debuff', mine: true }));
   if (hasBuff(G, P, 'heavy')) out.push({ glyph: '重', name: '加重', left: P.buffs.heavy! - G.t, kind: 'debuff', mine: true });
   if (P.stun > G.t) out.push({ glyph: P.stunKind === 'stone' ? '石' : '暈', name: P.stunKind === 'stone' ? '石化' : '眩暈', left: P.stun - G.t, kind: 'debuff', mine: true });
+  if (hasBuff(G, P, 'bleed')) out.push({ glyph: '血', name: '出血', left: P.buffs.bleed! - G.t, kind: 'debuff' });
   if (hasBuff(G, P, 'sprint')) out.push({ glyph: '疾', name: '疾跑', left: P.buffs.sprint! - G.t, kind: 'buff' });
   if (hasBuff(G, P, 'akb')) out.push({ glyph: '防', name: '防擊退', left: P.buffs.akb! - G.t, kind: 'buff' });
   return out;

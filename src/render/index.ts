@@ -5,7 +5,7 @@ import { BOSS } from '../core/constants';
 import { dirV } from '../core/geometry';
 import { view, px, text, circle, setCamera, worldTransform, lerp } from './canvas';
 import { drawArena } from './arena';
-import { drawBoss, drawClouds, drawOrbAndEyes, drawPose, activePose } from './boss';
+import { drawBoss, drawClouds, drawOrbAndEyes, drawPose, activePose, POSE_TEXT } from './boss';
 import { drawTele } from './telegraphs';
 import { drawFx } from './effects';
 import { drawEnt } from './entities';
@@ -17,6 +17,8 @@ export interface DrawOpts {
   fix?: Fix;
   /** 回放時不顯示提示 */
   noHints?: boolean;
+  /** 滑鼠點的目的地 */
+  moveTo?: { x: number; y: number } | null;
 }
 
 export function draw(G: RenderState | null, cfg: Config, opts: DrawOpts = {}): void {
@@ -55,6 +57,14 @@ export function draw(G: RenderState | null, cfg: Config, opts: DrawOpts = {}): v
   G.ents.filter((e) => !e.isPlayer).forEach((e) => drawEnt(c, e, G, alpha));
   drawEnt(c, P, G, alpha);
   if (opts.fix) drawFix(c, opts.fix);
+  if (opts.moveTo) {
+    const m = opts.moveTo;
+    c.save();
+    c.strokeStyle = '#8bdcff'; c.lineWidth = px(2);
+    circle(c, m.x, m.y, 0.7); c.stroke();
+    c.beginPath(); c.moveTo(m.x - 0.4, m.y - 0.4); c.lineTo(m.x + 0.4, m.y + 0.4); c.moveTo(m.x + 0.4, m.y - 0.4); c.lineTo(m.x - 0.4, m.y + 0.4); c.stroke();
+    c.restore();
+  }
   if (G.fx.some((f) => f.k === 'flash')) {
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.fillStyle = 'rgba(255,60,80,.18)';
@@ -72,16 +82,15 @@ function drawPoseInset(c: CanvasRenderingContext2D, pose: EmbraceType, cfg: Conf
   c.beginPath(); c.roundRect(x0, y0, size, size + 22 * D, 10 * D); c.fill(); c.stroke();
   const saved = view.SCALE;
   view.SCALE = size / 9.5;
-  // 手掌在心臟上方（包覆）或下方（撈起），把整隻手置中
-  const cy = BOSS.y + 8 + (pose === 'cover' ? -1.7 : 1.7);
+  const cy = BOSS.y + 8;
   c.setTransform(view.SCALE, 0, 0, view.SCALE, x0 + size / 2 - BOSS.x * view.SCALE, y0 + size / 2 - cy * view.SCALE);
-  c.fillStyle = '#ff3b5c'; circle(c, BOSS.x, BOSS.y + 8, 1); c.fill();
-  drawPose(c, pose, cfg, false);
+  drawPose(c, pose, cfg, true);
   view.SCALE = saved;
   c.setTransform(1, 0, 0, 1, 0, 0);
-  c.font = `900 ${13 * D}px "Noto Sans TC","Microsoft JhengHei",sans-serif`;
+  c.font = `900 ${12 * D}px "Noto Sans TC","Microsoft JhengHei",sans-serif`;
   c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#ffd36b';
-  c.fillText(cfg.text ? (pose === 'cover' ? '包覆（手心）' : '撈起（手背）') : '王的手勢', x0 + size / 2, y0 + size + 8 * D);
+  const T = POSE_TEXT[pose];
+  c.fillText(cfg.text ? `${T.name.slice(0, 4)}・左手${pose === 'cover' ? '身前' : '身後'}` : '王的手勢', x0 + size / 2, y0 + size + 8 * D);
 }
 
 /** 回放的「正確位置」標記：綠色圈＋（可選）正確面向箭頭 */

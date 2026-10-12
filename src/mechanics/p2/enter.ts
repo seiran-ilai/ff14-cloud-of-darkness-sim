@@ -7,12 +7,15 @@ import { p2Home, zoneOf, sbPos } from '../../core/p2';
 import type { GameState } from '../../game/state';
 import { createP2 } from '../../game/p2state';
 
-export function enterP2(G: GameState): void {
+/** keep：保留目前位置（暗之大泛濫時大家已經先跑好位）；否則直接放到基本站位 */
+export function enterP2(G: GameState, keep = false): void {
   G.p2 = createP2();
   G.ents.forEach((e) => {
     const h = p2Home(e.al, e.role), z = zoneOf(e.al, e.role);
     const look = z === 'in' ? { x: 0, y: 0 } : sbPos(z);
-    Object.assign(e, { x: h.x, y: h.y, px: h.x, py: h.y, mt: { ...h }, ov: null, faceLock: null });
+    Object.assign(e, { mt: { ...h }, ov: null, faceLock: null });
+    if (keep) return;
+    Object.assign(e, { x: h.x, y: h.y, px: h.x, py: h.y });
     e.face = e.pface = angOf(look.x - h.x, look.y - h.y);
   });
 }

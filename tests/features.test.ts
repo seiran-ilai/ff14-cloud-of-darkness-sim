@@ -24,13 +24,16 @@ describe('種子', () => {
 describe('從某個機制開始練', () => {
   it('時間軸 1 從超石化開始：之前由 Bot 代打，紀錄清空、重新倒數', () => {
     const s = makeSession('tl1', 'C', 'H1');
+    s.cfg.failMode = 'continue'; // 站著不動也要繼續推進時間
     const G = s.newGame(false, 99, 47.5);
+    expect(G.state).toBe('ready');
+    s.start();
     expect(G.state).toBe('count');
     expect(G.t).toBeGreaterThan(45);
     expect(G.t).toBeLessThan(47.5);
     expect(G.checks).toEqual([]);
     expect(G.player.embs.length).toBeGreaterThan(0); // 99／111 秒的減益還在
-    while (G.t < 47) s.step(1 / 120);
+    for (let i = 0; i < 10 * 120 && G.t < 47; i++) s.step(1 / 120);
     expect(G.stored).not.toBeNull(); // 44 秒的超賦在 46.5 秒儲存
   });
   it('示範模式從中途開始也能跑完且成功', () => {
@@ -69,14 +72,64 @@ describe('弱點練習', () => {
   });
 });
 
+describe('開始與模式', () => {
+  it('自己練：新局停在準備畫面，按開始才倒數', () => {
+    const s = makeSession('petrify', 'A', 'D1');
+    const G = s.newGame(false, 3);
+    for (let i = 0; i < 600; i++) s.step(1 / 120);
+    expect(G.state).toBe('ready');
+    expect(G.t).toBe(0);
+    s.start();
+    expect(G.state).toBe('count');
+  });
+
+  it('錯誤即停：第一個失誤就停下，並記下「從此機制開始」的時間', () => {
+    const s = makeSession('tl1', 'A', 'D3');
+    s.cfg.failMode = 'stop';
+    const G = s.newGame(false, 7);
+    s.start();
+    runToEnd(s, G);
+    expect(G.stopCheck).toBeDefined();
+    expect(G.fails.length).toBeGreaterThanOrEqual(1);
+    expect(G.t).toBeLessThan(30); // 站著不動，在齊射式就停了
+    expect(G.stopCheck!.from).toBeGreaterThan(0);
+    expect(G.stopCheck!.from).toBeLessThanOrEqual(G.stopCheck!.t);
+  });
+
+  it('錯誤不停：失誤、陣亡都繼續，直到整段結束', () => {
+    const s = makeSession('tl1', 'A', 'D3');
+    s.cfg.failMode = 'continue';
+    const G = s.newGame(false, 7);
+    s.start();
+    runToEnd(s, G);
+    expect(G.stopCheck).toBeUndefined();
+    expect(G.player.dead).toBe(false);
+    expect(G.fails.length).toBeGreaterThan(3);
+    expect(G.t).toBeGreaterThan(120);
+  });
+
+  it('滑鼠點地面：角色走到那個點後停下', () => {
+    const s = makeSession('petrify', 'A', 'D1');
+    const G = s.newGame(false, 3);
+    s.start();
+    for (let i = 0; i < 600 && G.state !== 'run'; i++) s.step(1 / 120);
+    s.input.moveTo = { x: G.player.x + 3, y: G.player.y - 4 };
+    const goal = { ...s.input.moveTo };
+    for (let i = 0; i < 240; i++) s.step(1 / 120);
+    expect(Math.hypot(G.player.x - goal.x, G.player.y - goal.y)).toBeLessThan(0.01);
+    expect(s.input.moveTo).toBeNull();
+  });
+});
+
 describe('P2 格子規則', () => {
   it('玩家（內場）站著不動：40 秒變紅、45 秒格子消失掉下去', () => {
     const s = makeSession('p2grid', 'B', 'D3');
     const G = s.newGame(false, 1);
+    s.start();
     const c = cellUnder(G.player)!;
-    while (G.t < 41 && !G.player.dead) s.step(1 / 120);
+    while (G.t < 41 && !G.player.dead && G.state !== 'end') s.step(1 / 120);
     expect(cellRed(G.p2!, c)).toBe(true);
-    while (G.t < 47 && !G.player.dead) s.step(1 / 120);
+    while (G.t < 47 && !G.player.dead && G.state !== 'end') s.step(1 / 120);
     expect(G.player.dead).toBe(true);
     expect(G.fails.join()).toContain('格子消失');
   });
@@ -89,7 +142,7 @@ describe('P2 格子規則', () => {
     Object.assign(other, { x: c.cx + 1, y: c.cy, mt: { x: c.cx + 1, y: c.cy } });
     s.step(1 / 120);
     expect(G.p2!.cells[c.idx].doomAt).not.toBeNull();
-    while (G.t < 1.2) s.step(1 / 120);
+    for (let i = 0; i < 240 && G.t < 1.2 && G.state === 'run'; i++) s.step(1 / 120);
     expect(G.p2!.cells[c.idx].goneUntil).not.toBeNull();
     expect(G.player.dead).toBe(true);
   });

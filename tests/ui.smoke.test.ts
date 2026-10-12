@@ -24,15 +24,20 @@ beforeAll(async () => {
 });
 
 describe('UI 冒煙測試', () => {
-  it('初始畫面：練習項目、技能列、說明、倒數', () => {
-    expect(document.querySelectorAll('#drillsTl .drill').length).toBe(2);
+  it('初始畫面：練習項目、技能列、說明、準備畫面', () => {
+    expect(document.querySelectorAll('#drillsTl .drill').length).toBe(3);
     expect(document.querySelectorAll('#drillsOne .drill').length).toBeGreaterThan(5);
     expect(document.querySelectorAll('#bar .slot').length).toBe(4);
     expect(document.getElementById('brief')!.textContent).toContain('時間軸 1');
-    expect(document.querySelector('#ov .count')).not.toBeNull();
+    expect(document.getElementById('oStart')).not.toBeNull();
+    expect(document.querySelectorAll('#oMode .chip').length).toBe(2);
+    frames(120);
+    expect(document.getElementById('oStart')).not.toBeNull(); // 沒按開始就不會倒數
   });
 
-  it('倒數結束後開始，移動與技能有效、HUD 更新', () => {
+  it('按開始後倒數、開打，移動與技能有效、HUD 更新', () => {
+    (document.getElementById('oStart') as HTMLButtonElement).click();
+    expect(document.querySelector('#ov .count')).not.toBeNull();
     frames(200);
     expect(document.getElementById('ov')!.hidden).toBe(true);
     expect(document.getElementById('tr')!.textContent).toContain('時間');
@@ -87,8 +92,9 @@ describe('UI 冒煙測試', () => {
     (document.querySelector('[data-k="tl1"]') as HTMLButtonElement).click();
     const from = [...document.querySelectorAll<HTMLButtonElement>('#seq [data-from]')].find((b) => b.textContent!.includes('超石化'))!;
     from.click();
-    expect(document.querySelector('#ov .count')!.parentElement!.textContent).toContain('從 0:4');
-    frames(60 * 5);
+    expect(document.querySelector('#ov .ocard')!.textContent).toContain('從 0:4');
+    key('keydown', 'Enter');
+    frames(60 * 6);
     expect(document.getElementById('castN')!.textContent).toBe('超石化');
   });
 });

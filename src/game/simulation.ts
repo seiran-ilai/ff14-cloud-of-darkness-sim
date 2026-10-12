@@ -15,9 +15,11 @@ export interface InputState {
   rmb: boolean;
   /** 游標的世界座標 */
   mouse: Vec;
+  /** 滑鼠左鍵點的目的地（走到就清掉；按 WASD 也會取消） */
+  moveTo: Vec | null;
 }
 
-export const newInput = (): InputState => ({ keys: new Set(), rmb: false, mouse: { x: 0, y: 0 } });
+export const newInput = (): InputState => ({ keys: new Set(), rmb: false, mouse: { x: 0, y: 0 }, moveTo: null });
 
 export function speedOf(G: GameState, e: Entity): number {
   let s = RUN;
@@ -53,12 +55,18 @@ export function step(G: GameState, input: InputState, dt: number): void {
     else if (P.stun <= G.t) {
       let mx = axis(input.keys, ['KeyD', 'ArrowRight'], ['KeyA', 'ArrowLeft']);
       let my = axis(input.keys, ['KeyS', 'ArrowDown'], ['KeyW', 'ArrowUp']);
-      const L = Math.hypot(mx, my);
+      let L = Math.hypot(mx, my);
+      let step = speedOf(G, P) * dt;
+      if (L > 0) input.moveTo = null;
+      else if (input.moveTo) {
+        // 滑鼠點地面：朝那個點走，到了就停
+        mx = input.moveTo.x - P.x; my = input.moveTo.y - P.y; L = Math.hypot(mx, my);
+        if (L <= step) { step = L; input.moveTo = null; }
+      }
       if (L > 0) {
         mx /= L; my /= L;
-        const s = speedOf(G, P);
-        P.x += mx * s * dt;
-        P.y += my * s * dt;
+        P.x += mx * step;
+        P.y += my * step;
         if (G.cfg.auto && !input.rmb) P.face = angOf(mx, my);
       }
       if (input.rmb) {

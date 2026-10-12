@@ -46,13 +46,23 @@ export class Session {
     if (!this.cfg.cdReset && this.cdsKeep) G.cds = this.cdsKeep;
     this.G = G;
     this.acc = 0;
+    this.input.moveTo = null;
     this.rec.clear();
     drill.setup(G);
     G.ev.sort();
     G.seq.sort((a, b) => a.t - b.t);
-    if (drill.tl && startAt > 0) this.fastForward(G, startAt);
+    if (startAt > 0) this.fastForward(G, startAt);
     this.emit('new');
     return G;
+  }
+
+  /** 準備畫面按「開始」：開始倒數 */
+  start(): void {
+    const G = this.G;
+    if (!G || G.state !== 'ready') return;
+    G.state = 'count';
+    G.countT = 3;
+    this.emit('change');
   }
 
   /** 前面的部分交給 Bot 跑（之前的狀態＝照攻略處理的結果），到起點前清掉紀錄、重新倒數 */
@@ -68,7 +78,7 @@ export class Session {
     P.mt = null; P.ov = null; P.faceLock = null;
     G.checks = []; G.fails = []; G.toasts = []; G.sfx = []; G.botFails = []; G.mech = {};
     G.ents.forEach((e) => { e.px = e.x; e.py = e.y; e.pface = e.face; });
-    G.state = 'count';
+    G.state = auto ? 'count' : 'ready';
     G.countT = 3;
     G.startAt = G.t;
   }
