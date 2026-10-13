@@ -13,15 +13,15 @@ Vite + TypeScript（strict）+ Canvas 2D，沒有 UI 框架。
 
 | 用途 | 來源 |
 |---|---|
-| 機制效果、陰冷擁抱減益秒數、時間軸 | [FF14 灰機 wiki](https://ff14.huijiwiki.com/)（簡體中文，已轉繁體整理） |
-| 打法（イディル改）、P2／P3 華容道站位與處理方式 | [FF14 繁中高難攻略 — 滅・暗黑之雲激鬥戰](https://cycleapple.github.io/xiv-tc-battle-guide/chaotic/cloud-of-darkness/)（cycleapple） |
-| P3 華容道各座位站位（イディル改） | [滅・暗黑之雲小抄工具](https://cycleapple.github.io/xiv-tc-battle-guide/chaotic/cloud-of-darkness-cheatsheet/)（cycleapple） |
-| イディル改打法原文 | イディルシャイア居住區（[@idyllshireinfo](https://x.com/idyllshireinfo)）；[kanatan 整理](http://kanatan.info/archives/38822195.html) |
-| 攻略頁參考資料 | [Game8](https://game8.jp/ff14)（日文）、Kitten ERP Guides（英文） |
+| 本攻略原文（イディル改） | [イディルシャイア居住區](https://kanatan.info/archives/38822195.html) |
+| 中文翻譯 | [cycleapple FF14 繁中高難攻略 — 滅・暗黑之雲激鬥戰](https://cycleapple.github.io/xiv-tc-battle-guide/chaotic/cloud-of-darkness/) |
+| 站位小抄 | [cycleapple 小抄工具](https://cycleapple.github.io/xiv-tc-battle-guide/chaotic/cloud-of-darkness-cheatsheet/) |
+| 各機制說明（機制效果、減益秒數、時間軸） | [FF14 灰機 wiki](https://ff14.huijiwiki.com/)（簡體中文，已轉繁體整理） |
 
 - 整理後的機制文件：[`docs/cod-mechanics.md`](docs/cod-mechanics.md)（P1、P2、P4）、[`docs/p2-strategy.md`](docs/p2-strategy.md)（P3 華容道）。打法以標「【攻略處理】」的內容為準。
 - **各技能詠唱秒數、AOE 大小、場地尺寸大多是估計值**（攻略與 wiki 都沒寫明），集中在 [`src/core/tuning.ts`](src/core/tuning.ts) 並標「估計」，主要用來練習順序、面向與反應。發現與實戰不符歡迎開 issue。
 - FINAL FANTASY XIV 及相關名稱為 SQUARE ENIX 的商標。本專案為玩家自製的非官方練習工具，與 SQUARE ENIX 無關。
+- 模擬器製作：[@ilainosu.ffxiv](https://www.threads.net/@ilainosu.ffxiv)（Threads）
 
 ## 指令
 

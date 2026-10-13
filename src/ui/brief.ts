@@ -11,7 +11,7 @@ export function renderBrief(session: Session): void {
   const rand = parseRand(session.cfg.drill);
   let h = `<h3>${rand ? '隨機練習' : D.group === 'p2' ? 'P3 華容道（數值多為估計）' : D.tl ? '目前練習' : '單一機制'}</h3><h4>${D.name}</h4><p class="muted btext" id="bText" style="color:var(--fg)">${D.brief}</p><button class="linkbtn" id="bMore" hidden>看完整說明</button>`;
   if (rand) h += randPanelHtml(rand, session.cfg);
-  h += `<div class="row"><button class="btn ghost sm" id="bDemo">${G && G.auto ? '示範中…' : '看示範（T）'}</button><button class="btn ghost sm" id="bRe">自己練（R）</button></div>`;
+  if (G && G.auto) h += `<div class="row"><span class="muted">教學示範中…</span><button class="btn ghost sm" id="bRe">自己練（R）</button></div>`;
   $('brief').innerHTML = h;
   // 說明太長就先收起來（6 行），按鈕展開
   const bt = $('bText'), more = $('bMore');
@@ -34,12 +34,11 @@ export function renderBrief(session: Session): void {
     sc.innerHTML = t;
   }
   if (rand) bindRandPanel(session, rand);
-  $('bDemo').onclick = (e) => { (e.target as HTMLElement).blur(); session.newGame(true); };
-  $('bRe').onclick = (e) => { (e.target as HTMLElement).blur(); session.newGame(); };
+  const bRe = document.getElementById('bRe');
+  if (bRe) bRe.onclick = (e) => { (e.target as HTMLElement).blur(); session.newGame(); };
   const b0 = document.getElementById('bFrom0');
   if (b0) b0.onclick = () => { session.startAt = 0; session.newGame(); };
   $('seqCard').querySelectorAll<HTMLButtonElement>('[data-from]').forEach((b) => {
     b.onclick = () => { session.startAt = G!.seq[+b.dataset.from!].t; session.newGame(); };
   });
-  $('seedNow').textContent = G ? String(G.rng.seed) : '—';
 }

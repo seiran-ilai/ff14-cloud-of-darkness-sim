@@ -1,4 +1,4 @@
-// 上方：聯盟、職能、練習項目選擇；右側：本項目紀錄、最常錯的機制、種子
+// 上方：聯盟、職能、練習項目選擇；右側：本項目紀錄、最常錯的機制
 import { ALS, ROLES, type Alliance, type Role } from '../core/constants';
 import { saveConfig } from '../core/config';
 import { DRILLS, WEAK_PREFIX } from '../drills';
@@ -33,7 +33,7 @@ function renderWeak(session: Session): void {
        <ul class="weaklist">${w.map((m) => `<li><span class="wn" title="${m.mech}">${m.mech}</span><b>${m.all - m.ok}</b>
          <span class="wr"><i style="width:${Math.round(m.rate * 100)}%"></i><em>${Math.round(m.rate * 100)}%</em></span></li>`).join('')}</ul>
        <div class="row">${keys.length ? '<button class="btn sm" id="wGo">只練最常錯的</button>' : ''}<button class="btn ghost sm" id="wClr">清除紀錄</button></div>`
-    : '<p class="muted">還沒有失誤紀錄。自己練（不是看示範）結束後會統計每個機制的成功率。</p>'}`;
+    : '<p class="muted">還沒有失誤紀錄。自己練（不是教學示範）結束後會統計每個機制的成功率。</p>'}`;
   const go = document.getElementById('wGo');
   if (go) go.onclick = () => pickDrill(session, WEAK_PREFIX + keys.join(','));
   const clr = document.getElementById('wClr');
@@ -105,9 +105,4 @@ export function bindDrillPicker(session: Session): void {
       b.blur();
     };
   });
-  $('seedGo').onclick = () => {
-    const v = ($('seedIn') as HTMLInputElement).value.trim();
-    if (!/^\d+$/.test(v)) { ($('seedIn') as HTMLInputElement).focus(); return; }
-    session.newGame(false, Number(v) >>> 0);
-  };
 }

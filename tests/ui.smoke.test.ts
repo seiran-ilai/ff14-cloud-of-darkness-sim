@@ -80,11 +80,10 @@ describe('UI 冒煙測試', () => {
   it('切換單一機制並以示範模式跑完到結算', () => {
     (document.querySelector('[data-k="petrify"]') as HTMLButtonElement).click();
     expect(document.getElementById('brief')!.textContent).toContain('超石化');
-    key('keydown', 'KeyT', 't');
+    (document.querySelector('#ov [data-demo]') as HTMLButtonElement).click();
     frames(60 * 12);
     expect(document.querySelector('#ov .ocard h2')!.textContent).toContain('示範結束');
     expect(document.querySelectorAll('#ov .checks li').length).toBeGreaterThan(0);
-    expect(document.querySelector('#ov .endseed')!.textContent).toMatch(/種子 \d+/);
   });
 
   it('點判定可回放，Esc 回到結算', () => {
@@ -97,13 +96,10 @@ describe('UI 冒煙測試', () => {
     expect(document.querySelector('#ov .ocard')).not.toBeNull();
   });
 
-  it('鏡頭切換、種子重打、時間軸從中途開始', () => {
+  it('鏡頭切換、時間軸從中途開始', () => {
     (document.getElementById('openSet') as HTMLButtonElement).click();
     (document.querySelector('#setCam [data-v="follow"]') as HTMLButtonElement).click();
     (document.getElementById('closeSet') as HTMLButtonElement).click();
-    (document.getElementById('seedIn') as HTMLInputElement).value = '12345';
-    (document.getElementById('seedGo') as HTMLButtonElement).click();
-    expect(document.getElementById('seedNow')!.textContent).toBe('12345');
     frames(240);
     (document.querySelector('[data-k="tl1"]') as HTMLButtonElement).click();
     const from = [...document.querySelectorAll<HTMLButtonElement>('#seq [data-from]')].find((b) => b.textContent!.includes('超石化'))!;
