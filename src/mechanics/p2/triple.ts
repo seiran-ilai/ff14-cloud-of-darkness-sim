@@ -1,6 +1,7 @@
 /*
  * 三重暗之戰技（東西兩隻小王各自詠唱）
- * 時間點（相對 t0）：0 開始詠唱；第 k 擊（k = 0,1,2）在 t0 + cast + k·gap 判定，判定前 tell 秒亮出特效。
+ * 時間點（相對 t0）：0 開始詠唱；詠唱中小王依序亮出三個球（第 k 個在 0.4 + k·show 秒，亮 showFor 秒），
+ *   玩家要記住順序；詠唱結束後才依序放招：第 k 擊在 t0 + cast + k·gap 判定（放招時不會再亮球）。
  * 順序規則（攻略）：一定是「單手球 → 單手球／雙手球／黑霧 → 單手球／雙手球／黑霧」，3 次中一定有 2 次單手球。
  * 判定規則：
  *   單手球（L／R）：有球那側（小王的左／右）半場的半圓 halfR，能打到內場縱向格；
@@ -12,10 +13,10 @@
  * 估計值：詠唱 5 秒、間隔 3 秒、半圓 15 m、分攤圓 2.2 m、直線寬 2 m（見 tuning.ts TRIPLE）。
  * TODO(確認): 兩隻小王的順序是否相同未知，目前各自隨機。
  */
-import { TRIPLE } from '../../core/tuning';
+import { TRIPLE, TELE_SHOW } from '../../core/tuning';
 import { angOf, dist } from '../../core/geometry';
 import { hitHalf, hitCircle, hitRect } from '../../core/hit';
-import { rel, sbPos, sbFacing, zoneOf, p2Home, type Side } from '../../core/p2';
+import { rel, sbPos, sbFacing, zoneE, homeE, roleE, type Side } from '../../core/p2';
 import type { Role, Vec } from '../../core/constants';
 import { at, setCast, alertMsg, seqAdd, type Entity, type Fix, type GameState } from '../../game/state';
 import { good, hurtPlayer, botHit } from '../../game/results';
@@ -41,9 +42,12 @@ export function tripleSpot(side: Side, role: Role, kind: TripleKind): Vec {
 }
 
 /** 三擊的順序（符合攻略規則） */
-function sequence(G: GameState): TripleKind[] {
+function sequence(G: GameState, noSniper: boolean): TripleKind[] {
   const one = (): TripleKind => (G.rng.chance(0.5) ? 'L' : 'R');
-  const other: TripleKind = G.rng.chance(0.5) ? 'B' : 'C';
+  // 潛地式時的三重暗之戰技（攻略：只有分攤）：第一擊照規則是單手球，之後兩擊都是雙手球
+  if (noSniper) return [one(), 'B', 'B'];
+  // 混沌迫近後不會用狙擊式（黑霧）
+  const other: TripleKind = noSniper || G.rng.chance(0.5) ? 'B' : 'C';
   return G.rng.chance(0.5) ? [one(), one(), other] : [one(), other, one()];
 }
 
@@ -55,27 +59,40 @@ const nearest = (G: GameState, p: Vec, n: number): Entity[] => G.ents.filter((e)
 const halfDir = (side: Side, kind: TripleKind): number => sbFacing(side) + (kind === 'L' ? -Math.PI / 2 : Math.PI / 2);
 
 /** 回傳最後一擊的時間 */
-export function triple(G: GameState, t0: number): number {
+export function triple(G: GameState, t0: number, noSniper = false): number {
   const tag = '三重暗之戰技';
   seqAdd(G, t0, '三重暗之戰技（小王）');
-  const seqs: Record<string, TripleKind[]> = { '-1': sequence(G), '1': sequence(G) };
-  const P = G.player, pz = zoneOf(P.al, P.role);
-  at(G, t0, () => { setCast(G, '三重暗之戰技', TRIPLE.cast); });
+  const seqs: Record<string, TripleKind[]> = { '-1': sequence(G, noSniper), '1': sequence(G, noSniper) };
+  const P = G.player;
+  // 換位後玩家的區域會變：判定時才讀
+  const pzOf = (): ReturnType<typeof zoneE> => zoneE(P);
+  at(G, t0, () => { setCast(G, '三重暗之戰技', TRIPLE.cast, '記住小王依序亮的三個球！單手球→躲到沒球那半邊；雙手球→兩人分攤；黑霧→照相對方向散開'); });
   let last = t0;
   for (let k = 0; k < 3; k++) {
     const hit = t0 + TRIPLE.cast + k * TRIPLE.gap;
     last = hit;
     const strikes: Strike[] = [];
+    // 詠唱中：依序亮出第 k 個球（要記住順序）
+    const show = t0 + 0.4 + k * TRIPLE.show;
+    at(G, show, () => ([-1, 1] as Side[]).forEach((side) => {
+      const kind = seqs[side][k];
+      G.p2!.sb[side < 0 ? 0 : 1].glow = kind;
+      if (pzOf() === side) alertMsg(G, `第 ${k + 1} 個球：${NAME[kind]}（記住順序）`, TRIPLE.showFor, kind === 'B' || kind === 'C');
+    }));
+    at(G, show + TRIPLE.showFor, () => ([-1, 1] as Side[]).forEach((side) => { G.p2!.sb[side < 0 ? 0 : 1].glow = null; }));
+    // 放招：不再亮球，照記住的順序處理（Bot 記得順序）
     at(G, hit - TRIPLE.tell, () => {
       ([-1, 1] as Side[]).forEach((side) => {
         const kind = seqs[side][k];
-        G.p2!.sb[side < 0 ? 0 : 1].glow = kind;
-        if (pz === side) alertMsg(G, `第 ${k + 1} 擊：${NAME[kind]}`, 2.2, kind === 'B' || kind === 'C');
-        G.ents.forEach((e) => { if (isBot(G, e) && !e.dead && zoneOf(e.al, e.role) === side) e.mt = tripleSpot(side, e.role, kind); });
-        if (pz === side && G.cfg.hint && !G.auto) G.hints = [{ ...tripleSpot(side, P.role, kind), r: 1, label: NAME[kind].slice(0, 4) }];
-        if ((kind === 'L' || kind === 'R') && G.cfg.tele) { const c = sbPos(side); G.tele.push({ k: 'half', x: c.x, y: c.y, r: TRIPLE.halfR, a: halfDir(side, kind), until: hit }); }
+        if (pzOf() === side) alertMsg(G, `第 ${k + 1} 擊`, 1.5);
+        G.ents.forEach((e) => { if (isBot(G, e) && !e.dead && zoneE(e) === side) e.mt = tripleSpot(side, roleE(e), kind); });
+        if (pzOf() === side && G.cfg.hint && !G.auto) G.hints = [{ ...tripleSpot(side, roleE(P), kind), r: 1, label: `第 ${k + 1} 擊` }];
       });
     });
+    at(G, hit - TELE_SHOW, () => ([-1, 1] as Side[]).forEach((side) => {
+      const kind = seqs[side][k];
+      if ((kind === 'L' || kind === 'R') && G.cfg.tele) { const c = sbPos(side); G.tele.push({ k: 'half', x: c.x, y: c.y, r: TRIPLE.halfR, a: halfDir(side, kind), until: hit }); }
+    }));
     // 分攤與直線：判定前 1 秒鎖定目標並顯示預兆
     at(G, hit - 1, () => {
       strikes.length = 0;
@@ -90,8 +107,7 @@ export function triple(G: GameState, t0: number): number {
     at(G, hit, () => {
       G.hints = [];
       strikes.forEach((s) => {
-        G.p2!.sb[s.side < 0 ? 0 : 1].glow = null;
-        resolve(G, s, tag, k, pz === s.side);
+        resolve(G, s, tag, k, pzOf() === s.side);
       });
     });
   }
@@ -100,9 +116,9 @@ export function triple(G: GameState, t0: number): number {
 
 function resolve(G: GameState, s: Strike, tag: string, k: number, mineSide: boolean): void {
   const c = sbPos(s.side), P = G.player;
-  const fixFor = (e: Entity): Fix => (zoneOf(e.al, e.role) === s.side
-    ? { ...tripleSpot(s.side, e.role, s.kind), r: 1, label: NAME[s.kind] }
-    : { ...p2Home(e.al, e.role), r: 0.8, label: '格子內偏本體側' });
+  const fixFor = (e: Entity): Fix => (zoneE(e) === s.side
+    ? { ...tripleSpot(s.side, roleE(e), s.kind), r: 1, label: NAME[s.kind] }
+    : { ...homeE(e), r: 0.8, label: '格子內偏本體側' });
   const fail = (e: Entity, why: string): void => {
     if (e.isPlayer) hurtPlayer(G, tag, `第 ${k + 1} 擊 ${why}`, false, fixFor(e));
     else botHit(G, e, tag, `第 ${k + 1} 擊 ${why}`);
@@ -124,7 +140,7 @@ function resolve(G: GameState, s: Strike, tag: string, k: number, mineSide: bool
       const inside = G.ents.filter((e) => !e.dead && hitCircle(e, ci, TRIPLE.pairR));
       if (inside.length >= 2 || failed.has(ci.t)) return;
       // 分攤人數不足：算在「該來分攤卻沒來的人」身上；找不到就算目標自己
-      const partner = G.ents.find((e) => e.al === ci.t.al && PAIR[e.role] === ci.t.role && zoneOf(e.al, e.role) === s.side);
+      const partner = G.ents.find((e) => PAIR[roleE(e)] === roleE(ci.t) && zoneE(e) === s.side);
       const who = partner && !partner.dead ? partner : ci.t;
       failed.add(who);
       fail(who, who === ci.t ? '分攤人數不足' : '沒進分攤');
@@ -139,7 +155,7 @@ function resolve(G: GameState, s: Strike, tag: string, k: number, mineSide: bool
   }
   if (mineSide && !P.dead && !failed.has(P)) good(G, tag, `第 ${k + 1} 擊 ${NAME[s.kind]}：處理正確`, fixFor(P));
   // 內場玩家在單手球那一側附近（半圓外 3 m 內）沒被打到：給一個成功紀錄
-  if (half && !mineSide && zoneOf(P.al, P.role) === 'in' && !P.dead && !failed.has(P)
+  if (half && !mineSide && zoneE(P) === 'in' && !P.dead && !failed.has(P)
     && hitHalf(P, c, TRIPLE.halfR + 3, halfDir(s.side, s.kind), 0)) {
     good(G, tag, `第 ${k + 1} 擊 ${s.side < 0 ? '西' : '東'}側單手球：站在格子內偏本體側，沒被打到`);
   }

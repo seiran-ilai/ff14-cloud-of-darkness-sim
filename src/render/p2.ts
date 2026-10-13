@@ -1,5 +1,5 @@
-// P2 華容道繪製：環狀地板、平臺、井字格子（站立計時、變紅、消失）、塔、王與小王
-import { P2 } from '../core/tuning';
+// P2繪製：環狀地板、平臺、井字格子（站立計時、變紅、消失）、塔、王與小王
+import { P2, P3 } from '../core/tuning';
 import { CELLS, sbPos, sbFacing, cellUnder } from '../core/p2';
 import { dirV } from '../core/geometry';
 import type { RenderState } from '../game/state';
@@ -64,16 +64,42 @@ export function drawP2Field(c: CanvasRenderingContext2D, G: RenderState): void {
     circle(c, t.x, t.y, t.r); c.fill(); c.stroke();
     text(c, String(t.need), t.x, t.y, 12, '#fff');
   });
+  // 暗之荊棘：紫色帶刺的圓
+  s.thorns.forEach((t) => {
+    const R = P3.seed.thornR;
+    c.fillStyle = 'rgba(120,40,160,.55)'; circle(c, t.x, t.y, R); c.fill();
+    c.strokeStyle = '#d68bff'; c.lineWidth = px(1.5);
+    c.beginPath();
+    for (let k = 0; k < 10; k++) { const a = (k * Math.PI) / 5 + G.t * 0.5; c.moveTo(t.x + Math.cos(a) * R * 0.6, t.y + Math.sin(a) * R * 0.6); c.lineTo(t.x + Math.cos(a) * (R + 0.6), t.y + Math.sin(a) * (R + 0.6)); }
+    c.stroke();
+  });
+  // 荊棘叢生連線：荊棘 → 人、內場兩人互連
+  s.links.forEach((l) => {
+    const a = G.ents[l.a], b = l.b !== undefined ? G.ents[l.b] : null;
+    if (!a) return;
+    const from = b ? { x: b.x, y: b.y } : { x: l.x!, y: l.y! };
+    c.strokeStyle = `rgba(214,139,255,${0.55 + 0.35 * Math.sin(G.t * 8)})`; c.lineWidth = px(2.5); c.setLineDash([px(6), px(4)]);
+    c.beginPath(); c.moveTo(from.x, from.y); c.lineTo(a.x, a.y); c.stroke(); c.setLineDash([]);
+  });
 }
 
 /** 王（中央）與兩隻小王（平臺上，面向場外；特效：左右觸手、雙手、身體中心） */
 export function drawP2Bosses(c: CanvasRenderingContext2D, G: RenderState): void {
+  // 恐懼之雲的提示：王身邊的紫色環形暗雲／方形暗雲
+  const fear = G.p2!.fear;
+  if (fear && fear.until > G.t) {
+    const k = 0.5 + 0.3 * Math.sin(G.t * 6);
+    c.strokeStyle = `rgba(170,90,255,${k})`; c.lineWidth = px(6);
+    if (fear.kind === 'ring') { circle(c, 0, 0, 6.5); c.stroke(); }
+    else { c.strokeRect(-5.5, -5.5, 11, 11); }
+  }
   c.fillStyle = 'rgba(120,80,200,.18)'; circle(c, 0, 0, 4.5); c.fill();
   c.fillStyle = '#120d1e'; circle(c, 0, 0, 3); c.fill();
   c.strokeStyle = '#b99cff'; c.lineWidth = px(2); c.stroke();
   text(c, '暗黑之雲', 0, 0, 12, '#eae4fb');
+  if (G.p2!.vanished) return;
   G.p2!.sb.forEach((b) => {
-    const p = sbPos(b.side), f = dirV(sbFacing(b.side)), r = { x: -f.y, y: f.x };
+    const p = b.at ?? sbPos(b.side), f = dirV(sbFacing(b.side)), r = { x: -f.y, y: f.x };
     const glowL = b.glow === 'L' || b.glow === 'B', glowR = b.glow === 'R' || b.glow === 'B';
     // 觸手：左右兩隻
     [[-1, glowL], [1, glowR]].forEach(([s, on]) => {

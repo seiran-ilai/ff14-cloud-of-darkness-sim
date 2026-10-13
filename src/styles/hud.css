@@ -1,18 +1,20 @@
 /* 遊戲舞台：canvas 與疊在上面的 HUD、技能列、覆蓋層 */
-.stage{position:relative;width:100%;max-width:min(820px,max(440px,calc(100vh - 270px)));margin:0 auto;aspect-ratio:1/1;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:#06050b;user-select:none;-webkit-user-select:none}
+.stage{position:relative;width:100%;max-width:min(900px,max(440px,calc(100vh - 285px)));margin:0 auto;aspect-ratio:1/1;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:#06050b;user-select:none;-webkit-user-select:none}
 #cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:crosshair}
 .hud{position:absolute;pointer-events:none;font-family:var(--f-body)}
-/* 詠唱條（仿遊戲：技能名在左、剩餘秒數在右，下方細長金色條） */
-.castwrap{top:12px;left:50%;transform:translateX(-50%);width:min(56%,420px);display:flex;flex-direction:column;gap:2px}
+/* 詠唱條（仿遊戲：技能名在左、剩餘秒數在右，下方金色條）：放大、置中在畫面上緣（不擋住王的手勢與自己） */
+.castwrap{top:10px;left:50%;transform:translateX(-50%);width:min(62%,500px);display:flex;flex-direction:column;gap:3px}
 .casthead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:0 2px}
-.castname{font-weight:900;font-size:15px;letter-spacing:.04em;text-shadow:0 1px 3px #000,0 0 6px #000;color:#fff}
-.casttime{font-size:13px;font-weight:700;color:var(--gold-2);font-variant-numeric:tabular-nums;text-shadow:0 1px 2px #000}
-.castbar{width:100%;height:9px;border-radius:2px;background:rgba(0,0,0,.7);border:1px solid rgba(233,185,73,.75);box-shadow:0 0 6px rgba(0,0,0,.8);overflow:hidden}
+.castname{font-weight:900;font-size:clamp(18px,3vw,24px);letter-spacing:.06em;text-shadow:0 1px 3px #000,0 0 8px #000;color:#fff}
+.casttime{font-size:clamp(14px,2.2vw,17px);font-weight:700;color:var(--gold-2);font-variant-numeric:tabular-nums;text-shadow:0 1px 2px #000}
+.castbar{width:100%;height:12px;border-radius:2px;background:rgba(0,0,0,.7);border:1px solid rgba(233,185,73,.75);box-shadow:0 0 6px rgba(0,0,0,.8);overflow:hidden}
 .castbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#9c6a1c,#e9b949 70%,#fff2c2);box-shadow:0 0 8px rgba(255,214,120,.8)}
+/* 詠唱提示：詠唱條下方的處理方式 */
+.casttip{margin-top:4px;text-align:center;font-size:clamp(13px,2vw,16px);font-weight:700;line-height:1.4;color:#ffe6a3;background:rgba(10,8,18,.78);border:1px solid rgba(233,185,73,.45);border-radius:6px;padding:4px 10px;text-shadow:0 1px 2px #000}
 /* 王台詞對話框 */
 .bossline{bottom:160px;left:50%;transform:translateX(-50%);width:min(86%,520px);display:flex;flex-direction:column;gap:2px;font-size:15px;font-weight:700;color:#fff;background:linear-gradient(rgba(22,16,38,.92),rgba(10,8,18,.92));border:1px solid rgba(233,185,73,.55);border-radius:6px;padding:7px 14px 9px;box-shadow:0 4px 16px rgba(0,0,0,.6)}
 .bossline .who{font-size:12px;color:var(--gold-2);letter-spacing:.1em}
-.alert{top:58px;left:50%;transform:translateX(-50%);font-size:clamp(18px,3vw,26px);font-weight:900;color:var(--gold-2);text-shadow:0 0 2px #000,0 2px 8px #000,0 0 18px rgba(0,0,0,.8);white-space:nowrap}
+.alert{top:27%;left:50%;transform:translateX(-50%);width:max-content;max-width:90%;text-align:center;line-height:1.35;font-size:clamp(18px,3vw,26px);font-weight:900;color:var(--gold-2);background:rgba(10,8,18,.55);border-radius:8px;padding:4px 12px;text-shadow:0 0 2px #000,0 2px 8px #000,0 0 18px rgba(0,0,0,.8)}
 .alert.danger{color:#ff9aa4}
 /* 增減益圖示列：自己的減益放大、紅框，剩 5 秒內閃爍 */
 .status{top:10px;left:10px;display:flex;flex-wrap:wrap;align-items:flex-start;gap:6px;max-width:38%}
@@ -59,3 +61,19 @@
 .checks li.ng::before{background:var(--ng)} .checks li.warn::before{background:var(--gold)}
 .checks .tg{color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
 .count{font-family:var(--f-display);font-size:96px;color:var(--gold-2);text-shadow:0 4px 18px #000}
+/* 隨機練習：機制勾選樹（全選 → 階段 → 單一機制） */
+.mtree{display:flex;flex-direction:column;gap:6px;border:1px solid var(--line);border-radius:10px;padding:8px 10px;max-height:240px;overflow:auto;font-size:13.5px}
+.mtree label{display:flex;align-items:center;gap:6px;cursor:pointer}
+.mtree .mall{font-weight:700}
+.mgroup{display:flex;flex-direction:column;gap:3px}
+.mgroup .mph{font-weight:700;color:var(--gold-2)}
+.mitems{display:flex;flex-wrap:wrap;gap:3px 14px;padding-left:22px}
+/* 開局卡片：兩種開始方式 */
+.starts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.startbtn{font:inherit;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:4px;padding:12px 14px;border-radius:12px;border:1px solid var(--gold);background:var(--gold);color:#1c1406}
+.startbtn b{font-size:17px}
+.startbtn span{font-size:12.5px;line-height:1.4;opacity:.85}
+.startbtn[data-mode="continue"]{background:transparent;color:var(--fg);border-color:var(--line)}
+.startbtn:hover{filter:brightness(1.08)}
+.startbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mtree label.dim{opacity:.45}

@@ -8,10 +8,10 @@
  */
 import { HIT, VOLLEY } from '../core/tuning';
 import { HALF, CELL, type Vec } from '../core/constants';
-import { toUV, fromUV, laneC, laneOf } from '../core/geometry';
+import { toUV, fromUV, laneC, laneOf, voidDist } from '../core/geometry';
 import { at, alertMsg, seqAdd, type Entity, type GameState, type LaneFam, type VolleyPlan, type VolleyRound } from '../game/state';
 import { good, hurtPlayer, botHit } from '../game/results';
-import { claim, npcHome, npcs } from '../game/bots';
+import { claim, npcSettle, npcs } from '../game/bots';
 
 /** 判定圈是否碰到這一輪發射的直線 */
 export function inLanes(p: Vec, r: Pick<VolleyRound, 'fam' | 'lanes'>): boolean {
@@ -23,17 +23,32 @@ export function inLanes(p: Vec, r: Pick<VolleyRound, 'fam' | 'lanes'>): boolean 
 /** Bot 站格子時離格子中心的隨機偏移上限（離相鄰列至少 CELL/2 − 2.5 ≈ 3 m） */
 const JITTER = 2.5;
 
+/** 王底下沒有地板的那一格（北角） */
 /**
- * 單一方向的走位計畫：先站「第一批不打」的列 s，第一批炸完後踩進「第一批打過」的列 f。
+ * 格子的站位點：一般是格子中心；被北邊切線切到的格子改站格子偏南的部分（往南角移 CELL/4）。
+ * 移過去還是沒地板（北角那格）就不能站。
+ */
+export function cellStand(u: number, v: number): Vec {
+  const c = fromUV(laneC(u), laneC(v));
+  return voidDist(c.x, c.y) < 3 ? fromUV(laneC(u) + CELL / 4, laneC(v) - CELL / 4) : c;
+}
+const isVoidCell = (u: number, v: number): boolean => { const s = cellStand(u, v); return voidDist(s.x, s.y) < HIT + 1; };
+
+/**
+ * 走位計畫：先站「兩方向第一批都不打」的格子 (su,sv)，各方向第一批炸完後踩進打過的列 (fu,fv)。
+ * 中途、最後的格子都不能是王底下沒地板的那一格。
  * 成本＝移動列數＋最後離中央的距離（攻略站交會點旁，結束時靠中央，下一個機制才跑得到）。
  */
-export function planAxis(cur: number, first: number[]): { s: number; f: number } {
-  let best = { s: 0, f: 0 }, bestCost = Infinity;
-  for (let s = 0; s < 4; s++) {
-    if (first.includes(s)) continue;
-    for (const f of first) {
-      const cost = Math.abs(cur - s) * 2 + Math.abs(s - f) + Math.abs(f - 1.5) * 0.9;
-      if (cost < bestCost) { bestCost = cost; best = { s, f }; }
+export function planCells(cu: number, cv: number, first: { U: number[]; V: number[] }, uFirst: boolean): { su: number; fu: number; sv: number; fv: number } | null {
+  const axis = (cur: number, s: number, f: number): number => Math.abs(cur - s) * 2 + Math.abs(s - f) + Math.abs(f - 1.5) * 0.9;
+  let best: { su: number; fu: number; sv: number; fv: number } | null = null, bestCost = Infinity;
+  for (let su = 0; su < 4; su++) for (let sv = 0; sv < 4; sv++) {
+    if (first.U.includes(su) || first.V.includes(sv)) continue;
+    for (const fu of first.U) for (const fv of first.V) {
+      const mid = uFirst ? [fu, sv] : [su, fv];
+      if (isVoidCell(su, sv) || isVoidCell(mid[0], mid[1]) || isVoidCell(fu, fv)) continue;
+      const cost = axis(cu, su, fu) + axis(cv, sv, fv);
+      if (cost < bestCost) { bestCost = cost; best = { su, fu, sv, fv }; }
     }
   }
   return best;
@@ -49,7 +64,13 @@ export function volley(G: GameState, t0: number): number {
     const n = rng.chance(0.5) ? 2 : 3, idx = rng.shuffle([0, 1, 2, 3]);
     return [idx.slice(0, n).sort(), idx.slice(n).sort()];
   };
-  const [a1, a2] = split(), [b1, b2] = split();
+  // 只剩王底下那一格安全的組合不會出現（重抽）
+  let [a1, a2] = split(), [b1, b2] = split();
+  for (let i = 0; i < 30; i++) {
+    const fU = f1 === 'U' ? a1 : b1, fV = f1 === 'V' ? a1 : b1;
+    if (planCells(1.5, 1.5, { U: fU, V: fV }, f1 === 'U')) break;
+    [a1, a2] = split(); [b1, b2] = split();
+  }
   const g = VOLLEY.glow, f = VOLLEY.fire;
   const rounds: VolleyRound[] = [
     { fam: f1, lanes: a1, glow: t0 + g[0], fire: t0 + f[0] },
@@ -60,13 +81,21 @@ export function volley(G: GameState, t0: number): number {
   const first = { U: f1 === 'U' ? a1 : b1, V: f1 === 'V' ? a1 : b1 };
   const tFirst = { U: f1 === 'U' ? t0 + f[0] : t0 + f[1], V: f1 === 'V' ? t0 + f[0] : t0 + f[1] };
   let hits = 0;
-  at(G, t0 - 0.5, () => { alertMsg(G, '暗黑之破片雲出現了……', 2.5); G.extra.clouds = { rounds, until: t0 + f[3] + 0.7 }; });
+  at(G, t0 - 0.5, () => { alertMsg(G, '暗黑之破片雲出現了：站第一批與第二批交會點旁，炸完踩進去', 3); G.extra.clouds = { rounds, until: t0 + f[3] + 0.7 }; });
 
-  const plan = (p: Vec, ju: number, jv: number): VolleyPlan => {
-    const uv = toUV(p), a = planAxis(laneOf(uv.u), first.U), b = planAxis(laneOf(uv.v), first.V);
-    return { iu: a.s, fu: a.f, iv: b.s, fv: b.f, ju, jv };
+  // 被切線切到的格子不加隨機偏移（偏移會出列或踩空）
+  const cellOf = (v: VolleyPlan): Vec => {
+    const c = fromUV(laneC(v.iu), laneC(v.iv));
+    return voidDist(c.x, c.y) < 3 ? cellStand(v.iu, v.iv) : fromUV(laneC(v.iu) + v.ju, laneC(v.iv) + v.jv);
   };
-  const cellOf = (v: VolleyPlan): Vec => fromUV(laneC(v.iu) + v.ju, laneC(v.iv) + v.jv);
+  const plan = (p: Vec, ju: number, jv: number): VolleyPlan => {
+    const uv = toUV(p), c = planCells(laneOf(uv.u), laneOf(uv.v), first, f1 === 'U')!;
+    const v: VolleyPlan = { iu: c.su, fu: c.fu, iv: c.sv, fv: c.fv, ju, jv };
+    // 隨機偏移會踩進王底下沒地板處就不偏移
+    const cells = [cellOf(v), cellOf({ ...v, iu: c.fu }), cellOf({ ...v, iv: c.fv }), cellOf({ ...v, iu: c.fu, iv: c.fv })];
+    if (cells.some((q) => voidDist(q.x, q.y) < HIT + 0.5)) { v.ju = 0; v.jv = 0; }
+    return v;
+  };
   // 玩家的建議格（不加隨機偏移）：給提示與回放
   let pv: VolleyPlan | null = null;
   const playerFix = (label: string) => (pv ? { ...cellOf(pv), r: 1.6, label } : undefined);
@@ -98,11 +127,11 @@ export function volley(G: GameState, t0: number): number {
       G.ents.forEach((e) => { if (!e.isPlayer && !e.dead && inLanes(e, r)) botHit(G, e, tag, `第 ${k + 1} 輪吃到波動炮`); });
     });
   });
-  at(G, t0 + 9.1, () => {
+  at(G, t0 + f[3] + 0.1, () => {
     if (!hits) good(G, tag, '四輪全部躲開', playerFix('最後站的格子'));
     G.hints = [];
     npcs(G).forEach((e: Entity) => { e.vol = null; });
   });
-  npcHome(G, t0 + 9.2, me);
-  return t0 + 9.2;
+  npcSettle(G, t0 + f[3] + 0.2, me);
+  return t0 + f[3] + 0.2;
 }

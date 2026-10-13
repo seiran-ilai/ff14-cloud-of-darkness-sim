@@ -45,7 +45,7 @@ function frame(now: number): void {
     draw(rp.frame, cfg, { alpha: rp.alpha, fix: rp.check.fix, noHints: true });
   } else {
     const G = session.G;
-    if (G && !G.paused && !isSettingsOpen()) session.advance(real * cfg.speed * (G.ff ? 2 : 1));
+    if (G && !G.paused && !session.frozen && !isSettingsOpen()) session.advance(real * cfg.speed * (G.ff ? 2 : 1));
     draw(session.G, cfg, { alpha: session.alpha, moveTo: input.moveTo });
     updHUD(session.G, input);
     const sfx = session.drainSfx();

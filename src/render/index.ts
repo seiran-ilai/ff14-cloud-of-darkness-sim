@@ -5,7 +5,7 @@ import { BOSS } from '../core/constants';
 import { dirV } from '../core/geometry';
 import { view, px, text, circle, setCamera, worldTransform, lerp } from './canvas';
 import { drawArena } from './arena';
-import { drawBoss, drawClouds, drawOrbAndEyes, drawPose, activePose, POSE_TEXT } from './boss';
+import { drawBoss, drawClouds, drawOrbAndEyes, drawPose, activePose } from './boss';
 import { drawTele } from './telegraphs';
 import { drawFx } from './effects';
 import { drawEnt } from './entities';
@@ -31,7 +31,7 @@ export function draw(G: RenderState | null, cfg: Config, opts: DrawOpts = {}): v
   c.fillStyle = '#05040a';
   c.fillRect(0, 0, cv.width, cv.height);
   worldTransform(c);
-  if (G.p2) drawP2Field(c, G); else drawArena(c);
+  if (G.p2) drawP2Field(c, G); else drawArena(c, G);
   if (cfg.hint && !opts.noHints) {
     const hs = G.hints.concat(G.embHint ? [G.embHint] : []);
     hs.forEach((h) => {
@@ -89,8 +89,7 @@ function drawPoseInset(c: CanvasRenderingContext2D, pose: EmbraceType, cfg: Conf
   c.setTransform(1, 0, 0, 1, 0, 0);
   c.font = `900 ${12 * D}px "Noto Sans TC","Microsoft JhengHei",sans-serif`;
   c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#ffd36b';
-  const T = POSE_TEXT[pose];
-  c.fillText(cfg.text ? `${T.name.slice(0, 4)}・左手${pose === 'cover' ? '身前' : '身後'}` : '王的手勢', x0 + size / 2, y0 + size + 8 * D);
+  c.fillText(cfg.text ? (pose === 'cover' ? '右手心向下' : '右手心向上') : '王的手勢', x0 + size / 2, y0 + size + 8 * D);
 }
 
 /** 回放的「正確位置」標記：綠色圈＋（可選）正確面向箭頭 */

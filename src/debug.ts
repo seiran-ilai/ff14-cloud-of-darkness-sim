@@ -25,7 +25,7 @@ export function attachDebug(session: Session): void {
 
 /**
  * 截圖用：?drill=tl1&seed=7&t=41&auto=1&cam=follow&al=B&role=MT
- * 直接快轉到 t 秒並停住（遊戲速度設 0，不寫入設定）。
+ * 直接快轉到 t 秒並停住（session.frozen，不動設定；開新局就解除）。
  */
 function freezeFromUrl(session: Session): void {
   const q = new URLSearchParams(location.search);
@@ -39,7 +39,8 @@ function freezeFromUrl(session: Session): void {
   G.state = 'run';
   const t = Number(q.get('t'));
   while (G.t < t && G.state === 'run') session.step(1 / 120);
-  cfg.speed = 0;
+  // 只凍結這個工作階段，不動設定（設定會被其他操作存起來）
+  session.frozen = true;
   session.alpha = 1;
   document.getElementById('ov')!.hidden = (G.state as string) !== 'end';
 }

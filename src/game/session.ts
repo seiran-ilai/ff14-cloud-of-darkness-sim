@@ -23,6 +23,8 @@ export class Session {
   alpha = 1;
   /** 時間軸的起點（秒）；0 表示從頭 */
   startAt = 0;
+  /** 截圖網址參數用：畫面停住不推進（開新局就解除） */
+  frozen = false;
   readonly rec = new Recorder();
   /** 設定「每回合不重置冷卻」時沿用的冷卻表 */
   private cdsKeep: Record<number, number> | null = null;
@@ -42,6 +44,7 @@ export class Session {
   /** 開新局。seed 省略＝隨機；startAt（秒）> 0 時先以示範模式快轉到該機制前 */
   newGame(auto = false, seed?: number, startAt = this.startAt): GameState {
     const drill = getDrill(this.cfg.drill);
+    this.frozen = false;
     const G = createState(this.cfg, auto, createRng(seed), drill);
     if (!this.cfg.cdReset && this.cdsKeep) G.cds = this.cdsKeep;
     this.G = G;

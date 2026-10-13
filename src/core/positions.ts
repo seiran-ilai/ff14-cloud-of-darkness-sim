@@ -1,7 +1,7 @@
 // 攻略站位（cycleapple 繁中攻略）。座標是示意圖目測，屬估計。
 import { ROLES, BOSS, R, PARTY_MEMBERS, partyOf, type Alliance, type Role, type Party, type Vec } from './constants';
 import { edgePoint } from './geometry';
-import { BLADE } from './tuning';
+import { BLADE, OPENER } from './tuning';
 
 /** 原位：A 西、B 中、C 東；MT 組前排、ST 組後排 */
 export function homePos(al: Alliance, role: Role): Vec {
@@ -18,12 +18,16 @@ export function edgeSpot(al: Alliance, role: Role): Vec {
   return edgePoint(((a0 + ((a1 - a0) * i) / 7) * Math.PI) / 180, 2.2);
 }
 
-/** 核爆：A 丟西、B 丟南、C 丟東 */
+/** 核爆：大團到最上面（北邊王前、王底下沒地板處的南緣）集合；被點的人去另外三個角落 A 西、B 南、C 東 */
+export const FLARE_STACK: Vec = { x: 0, y: -7 };
 export const FLARE_SPOT: Record<Alliance, Vec> = { A: { x: -R + 3.5, y: 0 }, B: { x: 0, y: R - 3.5 }, C: { x: R - 3.5, y: 0 } };
 export const FLARE_DIR_NAME: Record<Alliance, string> = { A: '西', B: '南', C: '東' };
 
 /** 黑暗神聖：A／B／C 由西到東，前排 MT 組、後排 ST 組 */
 export const HOLY_SPOT = (al: Alliance, party: Party): Vec => ({ x: { A: -13, B: 0, C: 13 }[al], y: party === 'MT' ? -9.9 : 1.6 });
+
+/** P1 開場暗之刃單手安全區中心（場地北緣、王的左右兩側）；side = 1 東、−1 西 */
+export const OPENER_POCKET = (side: number): Vec => ({ x: side * OPENER.pocketX, y: OPENER.pocketY });
 
 /** 暗之刃單手安全區中心；side = 1 東、−1 西 */
 export const POCKET = (side: number): Vec => ({ x: side * BLADE.pocketX, y: BLADE.pocketY });

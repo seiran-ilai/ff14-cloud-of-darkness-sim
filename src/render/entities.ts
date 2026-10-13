@@ -69,6 +69,15 @@ export function drawEnt(c: CanvasRenderingContext2D, e: Entity, G: RenderState, 
   }
   if (e.embs.length) { c.fillStyle = '#c05bff'; circle(c, x - 0.5, y - r - 0.7, 0.4); c.fill(); }
   if ((e.flareUntil ?? 0) > G.t) { c.fillStyle = '#ff9b3d'; circle(c, x + 0.5, y - r - 0.8, 0.55); c.fill(); }
+  // P3 頭上標記
+  if (e.mark && e.mark.until > G.t) {
+    const col = { seed: '#c05bff', charge: '#ffb84a', spread: '#a46bff', dive: '#ff5d6c', impale: '#ff5d6c' }[e.mark.kind];
+    c.strokeStyle = col; c.fillStyle = col; c.lineWidth = px(2);
+    if (e.mark.kind === 'seed') { circle(c, x, y - r - 1.3, 0.55); c.fill(); }
+    else if (e.mark.kind === 'spread') { circle(c, x, y, r + 1.2); c.stroke(); }
+    else { circle(c, x, y - r - 1.3, 0.7); c.stroke(); circle(c, x, y - r - 1.3, 0.25); c.fill(); }
+  }
+  if (e.curse && e.curse > G.t) { c.fillStyle = '#7a2a9c'; c.beginPath(); c.moveTo(x, y); c.arc(x, y, r + 0.8, e.face - Math.PI / 2 - 0.26, e.face - Math.PI / 2 + 0.26); c.closePath(); c.fill(); }
   if (G.extra.holy && e.role[0] === 'H') { c.strokeStyle = '#f2c94c'; c.lineWidth = px(2); circle(c, x, y, r + 0.9); c.stroke(); }
   if (G.extra.beam && Object.values(G.extra.beam).includes(e) && G.cast && G.cast.name === '連射式波動炮') {
     c.strokeStyle = '#f2c94c'; c.lineWidth = px(2); c.setLineDash([px(4), px(3)]);
@@ -79,6 +88,7 @@ export function drawEnt(c: CanvasRenderingContext2D, e: Entity, G: RenderState, 
     // 自己的暗之擁抱倒數顯示在頭上
     const emb = e.embs.slice().sort((a, b) => a.exp - b.exp)[0];
     if (emb && emb.exp - G.t <= 10) text(c, (emb.exp - G.t).toFixed(1), x, y - 3.9, 13, emb.exp - G.t <= 5 ? '#ff9aa4' : '#e2c6ff');
+    if (e.curse && e.curse - G.t <= 10 && e.curse > G.t) text(c, `詛 ${(e.curse - G.t).toFixed(1)}`, x, y - 3.9, 13, e.curse - G.t <= 3 ? '#ff9aa4' : '#e2c6ff');
     text(c, stone ? '石化' : '你', x, y - 2.5, 13, stone ? '#cfcfcf' : '#fff');
   }
   c.restore();

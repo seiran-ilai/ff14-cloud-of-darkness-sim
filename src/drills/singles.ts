@@ -30,17 +30,18 @@ export const singles: Record<string, SingleDrill> = {
   embrace: {
     name: '陰冷擁抱',
     sub: '面向與外周處理',
-    brief: '先看王的手勢：<b>🫳 右手包覆（王的左手伸到身前）</b>＝手從上方包覆，手出現在你前方 → <b>面向場內</b>一路往前走。'
-      + '<b>🫴 右手撈起（王的左手伸到身後）</b>＝手從下方撈起，手出現在你後方 → 減益結束時<b>面向外</b>，手確實出現後再轉身往場內走（太早轉身手會出在移動方向）。'
+    brief: '<b>上減益（詠唱）時</b>看王的手勢並記住，王放招時不會再擺：'
+      + '<b>🫳 右手心向下（撒鹽）・左手在身前</b> → 手出現在你前方，<b>面向場內直走</b>。'
+      + '<b>🤌 右手心向上（義大利手勢）・左手在身後</b> → 手出現在你後方，減益結束時<b>面向場外</b>，手確實出現後再轉身往場內疾跑（太早轉身手會出在移動方向）。'
       + '剩 1 秒會被加重；到外周處理讓手朝場外打，建議開疾跑。',
     mechs: ['陰冷擁抱'],
     seg(G, t0) {
       const d = G.cfg.dur;
-      embraceCast(G, t0, [d, d + 8]);
+      embraceCast(G, t0, [d, d + 8], { withPlayer: true });
       return t0 + EMBRACE.cast + d + 8 + EMBRACE.handDelay + 1.5;
     },
     // 單練：玩家那批判定完就結束
-    setup(G) { embraceCast(G, 0.5, [G.cfg.dur, G.cfg.dur + 8], { endOnMine: true }); },
+    setup(G) { embraceCast(G, 0.5, [G.cfg.dur, G.cfg.dur + 8], { endOnMine: true, withPlayer: true }); },
   },
   volley: single({
     name: '齊射式波動炮',
@@ -82,7 +83,7 @@ export const singles: Record<string, SingleDrill> = {
   flareholy: single({
     name: '核爆＋神聖',
     sub: 'A 西・B 南・C 東',
-    brief: '核爆：被點的人 A 去西、B 去南、C 去東；沒被點的人離遠一點。黑暗神聖：6 處分攤，A／B／C 由西到東，前排 MT 組、後排 ST 組。',
+    brief: '核爆：大團到最上面（北邊王前）集合；被點的人去另外三個角落，A 西、B 南、C 東。黑暗神聖：6 處分攤，A／B／C 由西到東，前排 MT 組、後排 ST 組。',
     mechs: ['核爆', '黑暗神聖'],
     seg(G, t0) { flare(G, t0); return holy(G, t0 + 6); },
   }, 1, 0.5),

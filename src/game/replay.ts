@@ -18,11 +18,13 @@ export function snapshot(G: GameState): Frame {
   return {
     t: G.t, ents, player: m(G.player), tele: G.tele.slice(), fx,
     extra: { ...G.extra, flare: mapRec(G.extra.flare), beam: mapRec(G.extra.beam) },
-    poses: G.poses, stored: G.stored, hints: G.hints.slice(), embHint: G.embHint, cast: G.cast ? { ...G.cast } : null,
+    poses: G.poses, stored: G.stored, hints: G.hints.slice(), embHint: G.embHint, cast: G.cast ? { ...G.cast } : null, round: G.round,
     p2: G.p2 && {
       ...G.p2,
       cells: G.p2.cells.map((c) => ({ ...c })),
       sb: G.p2.sb.map((b) => ({ ...b })),
+      thorns: G.p2.thorns.slice(),
+      links: G.p2.links.slice(),
       innerTowers: G.p2.innerTowers.slice(),
       outerTowers: G.p2.outerTowers.slice(),
       reserve: new Map(),

@@ -6,12 +6,12 @@ import { singles, singleForMech } from '../drills/singles';
 import { mechName } from '../game/results';
 import type { Check } from '../game/state';
 import type { Session } from '../game/session';
-import { $, seg } from './dom';
+import { $ } from './dom';
 import { startReplay } from './replay';
 
 const MODE_NOTE: Record<Config['failMode'], string> = {
-  stop: '犯錯就立刻停下，分析錯在哪、正確該怎麼做，可以從這個機制重來。',
-  continue: '犯錯也不停（陣亡也繼續），打完整段再一次看所有判定。',
+  stop: '犯錯就停下，看錯在哪、正確怎麼做',
+  continue: '打完整段，最後一次看所有判定',
 };
 
 /** 失誤分析：這個機制的攻略處理（有單練說明就用，沒有就用目前練習的說明） */
@@ -20,19 +20,22 @@ function howTo(session: Session, c: Check): string {
   return k ? singles[k].brief : getDrill(session.cfg.drill).brief;
 }
 
+/** 開局卡片：只選要怎麼開始（錯誤即停／錯誤不停）；練什麼在上方按鈕列選 */
 function renderReady(session: Session): void {
   const ov = $('ov'), G = session.G!, cfg = session.cfg, D = getDrill(cfg.drill);
   ov.hidden = false;
   ov.style.background = '';
   ov.innerHTML = `<div class="ocard"><h2>${D.name}</h2>
-    <p class="muted">${G.startAt > 0 ? `從 <b>${fmtT(G.startAt)}</b> 開始（前面由 Bot 代打）・` : ''}種子 ${G.rng.seed}</p>
-    <div class="set"><span class="lbl">模式</span><span class="grp" id="oMode"></span></div>
-    <p class="muted">${MODE_NOTE[cfg.failMode]}</p>
-    <div class="row"><button class="btn" id="oStart">開始（Enter）</button><button class="btn ghost" id="oDemo">看示範（T）</button></div></div>`;
-  seg($('oMode'), ['stop', 'continue'], cfg.failMode, (v) => { cfg.failMode = v as Config['failMode']; saveConfig(cfg); renderReady(session); }, (v) => (v === 'stop' ? '錯誤即停' : '錯誤不停'));
-  $('oStart').onclick = () => session.start();
-  $('oDemo').onclick = () => session.newGame(true, G.rng.seed, G.startAt);
-  $('oStart').focus();
+    <p class="muted">${D.sub}・${G.startAt > 0 ? `從 <b>${fmtT(G.startAt)}</b> 開始（前面由 Bot 代打）・` : ''}種子 ${G.rng.seed}</p>
+    <div class="starts">
+      <button class="startbtn" data-mode="stop"><b>錯誤即停</b><span>${MODE_NOTE.stop}</span></button>
+      <button class="startbtn" data-mode="continue"><b>錯誤不停</b><span>${MODE_NOTE.continue}</span></button>
+    </div>
+    <p class="muted">Enter／空白鍵＝用上次的方式（${cfg.failMode === 'stop' ? '錯誤即停' : '錯誤不停'}）開始・T 看示範</p></div>`;
+  ov.querySelectorAll<HTMLButtonElement>('[data-mode]').forEach((b) => {
+    b.onclick = () => { cfg.failMode = b.dataset.mode as Config['failMode']; saveConfig(cfg); session.start(); };
+  });
+  ov.querySelector<HTMLButtonElement>(`[data-mode="${cfg.failMode}"]`)!.focus();
 }
 
 /** 錯誤即停：分析這個失誤 */

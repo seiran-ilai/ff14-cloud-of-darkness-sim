@@ -28,6 +28,20 @@ export function telePath(c: CanvasRenderingContext2D, t: Telegraph): void {
   if (t.k === 'rect') rectPath(c, t);
   else if (t.k === 'lane') { c.beginPath(); t.lanes.forEach((i) => lanePoly(c, t.fam, i, false)); }
   else if (t.k === 'donut') { diamondPath(c); c.moveTo(t.x + t.r, t.y); c.arc(t.x, t.y, t.r, 0, Math.PI * 2, true); }
+  else if (t.k === 'ring') { c.beginPath(); c.arc(t.x, t.y, t.r1, 0, Math.PI * 2); c.moveTo(t.x + t.r0, t.y); c.arc(t.x, t.y, t.r0, 0, Math.PI * 2, true); }
+  else if (t.k === 'fan') {
+    const m = t.a - Math.PI / 2;
+    c.beginPath(); c.moveTo(t.x, t.y); c.arc(t.x, t.y, t.r, m - t.w, m + t.w); c.closePath();
+  }
+  else if (t.k === 'line') {
+    const v = dirV(t.a), n = { x: -v.y, y: v.x }, L = t.len ?? 80;
+    c.beginPath();
+    c.moveTo(t.x - v.x * L + n.x * t.hw, t.y - v.y * L + n.y * t.hw);
+    c.lineTo(t.x + v.x * L + n.x * t.hw, t.y + v.y * L + n.y * t.hw);
+    c.lineTo(t.x + v.x * L - n.x * t.hw, t.y + v.y * L - n.y * t.hw);
+    c.lineTo(t.x - v.x * L - n.x * t.hw, t.y - v.y * L - n.y * t.hw);
+    c.closePath();
+  }
   else if (t.k === 'half') {
     // 畫布角度 = 我們的角度 − 90°；半圓從 a−90° 到 a+90°
     const m = t.a - Math.PI / 2;
@@ -63,7 +77,7 @@ export function drawTele(c: CanvasRenderingContext2D, t: Telegraph, now: number)
   c.save();
   if (t.k === 'lane') {
     glowFill(c, () => telePath(c, t), col, a * 0.75);
-  } else if (t.k === 'donut') {
+  } else if (t.k === 'donut' || t.k === 'ring') {
     glowFill(c, () => telePath(c, t), col, a, true);
   } else {
     glowFill(c, () => telePath(c, t), col, a);

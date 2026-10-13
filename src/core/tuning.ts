@@ -11,10 +11,16 @@ export const HEAVY_MUL = 0.5;
 /** 角色判定圈半徑 m（估計）。所有 AOE 判定都用「判定圈碰到預兆邊緣即中」，安全區則要求判定圈整個在內 */
 export const HIT = 0.5;
 
+/** Bot 看到預兆後多久開始動（反應時間，估計） */
+export const REACT = 0.6;
+/** 攻擊範圍（地面預兆）出現到實際判定的緩衝（估計） */
+export const TELE_SHOW = 2;
 /** 模擬固定時間步長（秒） */
 export const SIM_DT = 1 / 120;
 /** 鏡頭：固定視角時畫面中心到邊的距離、跟隨時的距離（m） */
-export const VIEW_FIXED = 35;
+export const VIEW_FIXED = 40;
+/** 固定鏡頭的中心往北移：場地北緣（王、P1 單手安全區）不要被上方的詠唱條擋住 */
+export const VIEW_FIXED_CY = -7;
 export const VIEW_FOLLOW = 21;
 /** 預兆判定前閃爍的秒數 */
 export const TELE_FLASH = 0.3;
@@ -38,8 +44,6 @@ export const EMBRACE = {
   heavyDur: 2,
   /** 剩幾秒時出現提示（docs） */
   warnAt: 5,
-  /** 王擺出手勢的提前秒數（估計） */
-  poseLead: 6,
   /** 離場邊幾公尺內算「外周」（估計） */
   edgeOk: 8,
 } as const;
@@ -61,6 +65,8 @@ export const FLARE = {
   spotTol: 6,
   /** 沒被點的人至少要離目標多遠（估計） */
   safeDist: 8,
+  /** 沒被點的人離北邊集合點的容許距離（估計） */
+  stackTol: 6,
 } as const;
 
 export const HOLY = {
@@ -130,9 +136,32 @@ export const DELUGE = { cast: 4 } as const;
 export const GREAT_DELUGE = { cast: 6, bleed: 15 } as const;
 
 /** 開場準備階段：3 次暗之刃的起點（估計） */
-export const OPENER = { blades: [3, 12, 21], deluge: 30 } as const;
+/**
+ * P1 開場（準備階段）：場地是大圓形，地面有一個直角 V 字圖案（頂點在中心偏南 R/4，兩邊 45° 往下到場邊）。
+ * 尺寸依使用者提供的示意圖換算（R＝場地半徑），都是估計。
+ */
+export const OPENER = {
+  blades: [3, 12, 21],
+  deluge: 30,
+  /** 圓形場地半徑：和 P2 菱形的東、西、南角同一個圓 */
+  roundR: 31,
+  /** 單手暗之刃安全區：場地北緣、王的左右兩側各一個圓（示意圖 ±0.29R、−0.92R，半徑 0.24R） */
+  pocketX: 9,
+  pocketY: -28.5,
+  pocketR: 7.4,
+  /** 雙手暗之刃：北半場的橢圓（示意圖中心 −0.53R、橫半軸 0.98R、縱半軸 0.71R）；站到地面 V 字頂點就安全 */
+  bothCY: -16.4,
+  bothRX: 30.4,
+  bothRY: 22,
+} as const;
 
-// ===================== P2 華容道 =====================
+/** 地面直角 V 字圖案的頂點 y（中心偏南 R/4） */
+export const FLOOR_V_Y = 7.75;
+
+/** P2 魔法陣：菱形把北角切平，y 小於這條線（王底下）沒有地板（示意圖 −R/2） */
+export const GEM_CUT = -15.5;
+
+// ===================== P2 =====================
 // 場地形狀依攻略示意圖判讀（docs/p2-strategy.md），尺寸全部是估計。
 
 export const P2 = {
@@ -164,12 +193,14 @@ export const DOMAIN = {
 } as const;
 
 export const TRIPLE = {
-  /** 三重暗之戰技：詠唱秒數、三次判定的間隔、每次判定前多久亮出特效（估計） */
+  /** 三重暗之戰技：詠唱秒數、三次判定的間隔、Bot 每擊前多久開始移動；詠唱中依序亮球的間隔與每個球亮幾秒（估計） */
   cast: 5,
   gap: 3,
   tell: 3,
-  /** 單手球：小王左／右半場的半圓半徑（估計，讓井字縱向格的「本體側」剛好安全） */
-  halfR: 15,
+  show: 1.4,
+  showFor: 1.1,
+  /** 單手球：小王左／右半場的半圓半徑（估計：蓋住整個平臺，碰到內場最外側格子的邊緣，站格子中央是安全的） */
+  halfR: 12.5,
   /** 雙手球：最近 3 人的 2 人分攤圓半徑（估計） */
   pairR: 2.2,
   /** 黑霧：最近 6 人的直線寬度的一半、長度（估計） */
@@ -184,4 +215,36 @@ export const WAVEBALL = {
   /** 外場三人塔：半徑、離小王的距離（估計） */
   outerR: 2.5,
   outerD: 3.5,
+} as const;
+
+// ===================== P3 華容道：其餘機制（尺寸、秒數全部是估計） =====================
+
+export const P3 = {
+  /** 內場 Bot 換格：每一步的間隔（一次走一格） */
+  stepDt: 0.7,
+  /** 恐懼之雲：詠唱、環形內外半徑、十字半寬、恐怖秒數（docs 6 秒） */
+  fear: { cast: 5, r0: 12.5, r1: 21, crossHW: 4, stun: 6 },
+  /** 波動詛咒：詠唱；詛咒式波動炮扇形半徑、半張角 */
+  curse: { cast: 4, r: 20, w: (15 * Math.PI) / 180 },
+  /** 種子彈：詠唱、點名到落地、圓形半徑、荊棘範圍、兩個荊棘太近會大爆炸的距離、荊棘佔格的寬限秒數 */
+  seed: { cast: 4, mark: 5, r: 3, thornR: 1.5, boom: 3, grace: 1 },
+  /** 荊棘叢生：詠唱、連線秒數（docs 18 秒）、剩 5 秒時要拉開的距離（外場荊棘、內場兩人） */
+  thorn: { cast: 4, dur: 18, warnLeft: 5, pull: 14, pair: 26 },
+  /** 小王暗之泛濫（可打斷） */
+  sbDeluge: { cast: 6 },
+  /** 凝聚式：詠唱、直線半寬、外場／內場需要的人數；分散式：圓形半徑、外場晚幾秒 */
+  charge: { cast: 5, hw: 2.5, needOut: 4, needIn: 2 },
+  spread: { cast: 5, r: 3, outerDelay: 2 },
+  /** 迴旋式：詠唱、5 擊間隔、每擊轉幾度、直線半寬、長度（只打內場） */
+  spin: { cast: 5, gap: 1.4, step: (22.5 * Math.PI) / 180, hw: 1.5, len: 18 },
+  /** 跳躍波動炮：小王跳到平臺內側（相對 f）、扇形半徑、半張角、兩發間隔 */
+  jump: { f: -4, r: 10.5, w: Math.PI / 4, gap: 1.6 },
+  /** 混沌迫近：詠唱、眩暈 */
+  swap: { cast: 5, stun: 2 },
+  /** 潛地式：詠唱、16 發的間隔、落在幾秒前的位置、圓形半徑 */
+  dive: { cast: 7, n: 16, gap: 0.6, lag: 1, r: 2.5 },
+  /** 磔殺：詠唱、圓形半徑（坦克死刑） */
+  impale: { cast: 4, r: 5 },
+  /** 雲散：詠唱 */
+  vanish: { cast: 5 },
 } as const;

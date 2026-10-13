@@ -1,12 +1,12 @@
 // 模擬一步：時間推進、事件、玩家移動、Bot 移動、強制位移、掉落判定
-import { R, type Vec } from '../core/constants';
-import { angOf, inArena } from '../core/geometry';
+import type { Vec } from '../core/constants';
+import { angOf, onP1Floor, clampP1, aroundVoid } from '../core/geometry';
 import { RUN, SPRINT_MUL, HEAVY_MUL } from '../core/tuning';
 import { hurtPlayer, botHit } from './results';
 import { isBot } from './bots';
 import { cellUnder } from '../core/p2';
 import { p2Walkable, updateGrid } from './p2state';
-import { navTarget, p2Refresh } from './p2nav';
+import { navTarget, outerNav, p2Refresh } from './p2nav';
 import { hasBuff, type Entity, type GameState } from './state';
 
 export interface InputState {
@@ -83,7 +83,8 @@ export function step(G: GameState, input: InputState, dt: number): void {
     if (e.forced) moveForced(e, dt);
     else if (!(e.stun > G.t)) {
       let tg = e.ov || e.mt;
-      if (tg && G.p2) tg = navTarget(G, e, tg);
+      if (tg && G.p2) tg = cellUnder(e) ? navTarget(G, e, tg) : outerNav(G, e, tg);
+      else if (tg && !G.round) tg = aroundVoid(e, tg);
       if (tg) {
         const dx = tg.x - e.x, dy = tg.y - e.y, d = Math.hypot(dx, dy), s = speedOf(G, e) * dt;
         if (d > 0.05) {
@@ -92,18 +93,18 @@ export function step(G: GameState, input: InputState, dt: number): void {
       }
     }
     if (e.faceLock != null) e.face = e.faceLock;
-    // P2：隊友掉下去就陣亡（屍體留在原地）
+    // P3：隊友掉下去就陣亡（屍體留在原地）
     if (G.p2 && !e.isPlayer && !p2Walkable(G.p2, e)) {
       botHit(G, e, '掉落', cellUnder(e) ? '格子消失掉下去' : '走出地板');
       e.dead = true;
       return;
     }
-    // P1：隊友被打出場地：記一次 Bot 失誤，夾回場內繼續（不讓畫面上少人）
-    if (!G.p2 && !e.isPlayer && !inArena(e.x, e.y)) {
+    // P1／P2：隊友被打出場地：記一次 Bot 失誤，夾回場內繼續（不讓畫面上少人）
+    if (!G.p2 && !e.isPlayer && !onP1Floor(e, G.round)) {
       if (!((e.fellAt ?? -Infinity) > G.t - 1)) botHit(G, e, '掉落', '被打出場地');
       e.fellAt = G.t;
-      const k = (R - 1) / (Math.abs(e.x) + Math.abs(e.y));
-      e.x *= k; e.y *= k;
+      const q = clampP1(e, G.round);
+      e.x = q.x; e.y = q.y;
     }
   });
   G.ents.forEach((e) => { e.embs = e.embs.filter((b) => b.exp > G.t); });
@@ -118,8 +119,8 @@ export function step(G: GameState, input: InputState, dt: number): void {
   if (G.t >= G.endT) finish(G);
 }
 
-/** 腳下有沒有地板：P1 菱形場地；P2 格子／平臺／環狀地板 */
-const onFloor = (G: GameState, p: Vec): boolean => (G.p2 ? p2Walkable(G.p2, p) : inArena(p.x, p.y));
+/** 腳下有沒有地板：P1 圓形／P2 菱形場地；P3 格子／平臺／環狀地板 */
+const onFloor = (G: GameState, p: Vec): boolean => (G.p2 ? p2Walkable(G.p2, p) : onP1Floor(p, G.round));
 
 function fall(G: GameState): void {
   const P = G.player;

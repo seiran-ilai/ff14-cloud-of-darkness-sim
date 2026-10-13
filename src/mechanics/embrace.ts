@@ -1,7 +1,9 @@
 /*
  * 陰冷擁抱
- * 時間點（相對 t0）：0 開始詠唱（心臟出現）；+cast 上減益，兩批各 12 人；
- *   每批在 E = t0 + cast + 減益秒數 結束：E−poseLead 王擺手勢、E−warnAt 提示、E−heavyAt 加重、
+ * 時間點（相對 t0）：0 開始詠唱（心臟出現、王擺手勢到詠唱結束）；+cast 上減益給 12 人（再分兩批各 6 人、秒數不同）；
+ *   兩次詠唱各 12 人，合起來剛好 24 人，每人只會拿到一次暗之擁抱；兩次的手勢一定相反。
+ *   王放招時不會再擺手勢，要記住自己上減益時看到的手勢。
+ *   每批在 E = t0 + cast + 減益秒數 結束：E−8 提示去外周（附上手勢）、E−warnAt 提示、E−heavyAt 加重、
  *   E 在每人位置生成攥魂之手、E+handDelay 判定矩形。
  * 判定規則：撈起＝手與玩家同向（從背後打）；包覆＝手與玩家反向（從面前打）。
  *   只看減益結束那一刻的面向。手要朝場外（與「離中心方向」差 < 60°），要在外周處理（離場邊 ≤ edgeOk）。
@@ -13,13 +15,18 @@ import { DIRNAME } from '../core/format';
 import { hitRect } from '../core/hit';
 import { EMBRACE } from '../core/tuning';
 import type { Vec } from '../core/constants';
-import { at, setCast, say, alertMsg, seqAdd, type Entity, type EmbraceType, type Fix, type GameState } from '../game/state';
+import { at, setCast, say, alertMsg, seqAdd, embraceLine, EMBRACE_TEXT, type Entity, type EmbraceType, type Fix, type GameState } from '../game/state';
 import { good, bad, hurtPlayer, botHit } from '../game/results';
 import { isBot } from '../game/bots';
 
+/** 一次詠唱的結果：groups[i] 拿 durs[i]，整次同一個手勢 */
+export interface EmbraceCast { groups: Entity[][]; type: EmbraceType }
+
 export interface EmbraceOpts {
-  /** 第二次詠唱：依第一次的分組分配（見下方 TODO） */
-  after?: Entity[][];
+  /** 第二次詠唱：傳入第一次的結果，這次給剩下沒拿到減益的 12 人、手勢相反 */
+  after?: EmbraceCast;
+  /** 單練：確保玩家在這次的 12 人裡 */
+  withPlayer?: boolean;
   /** 單練：玩家那批判定完就結束 */
   endOnMine?: boolean;
 }
@@ -30,38 +37,46 @@ export const EMBRACE_NAME: Record<EmbraceType, string> = { scoop: '撈起', cove
 export const embraceFace = (type: EmbraceType, p: Vec): number => (type === 'scoop' ? angOf(p.x, p.y) : angOf(p.x, p.y) + Math.PI);
 
 /**
- * 一次詠唱，兩批各 12 人，手勢相反；durs 由短到長。回傳分組（groups[i] 拿 durs[i]）。
- * 第二次詠唱傳入 after = 第一次的分組：第一次拿短的人，第二次拿長的（docs 第 2 節的模擬器假設）。
+ * 一次詠唱給 12 人、同一個手勢，再分兩批各 6 人；durs 由短到長（groups[i] 拿 durs[i]）。
+ * 第二次詠唱傳入 after = 第一次的結果，給剩下的 12 人（每人只拿一次），手勢相反。
  */
-export function embraceCast(G: GameState, t0: number, durs: number[], opt: EmbraceOpts = {}): Entity[][] {
-  const t1: EmbraceType = G.rng.chance(0.5) ? 'scoop' : 'cover';
-  const types: EmbraceType[] = [t1, t1 === 'scoop' ? 'cover' : 'scoop'];
-  const all = G.rng.shuffle(G.ents);
-  // TODO(確認): docs 標【未知】的人員分配；目前照 docs 假設「第一次拿短的人，第二次拿長的」
-  const groups = opt.after ? [opt.after[1], opt.after[0]] : [all.slice(0, 12), all.slice(12)];
+export function embraceCast(G: GameState, t0: number, durs: number[], opt: EmbraceOpts = {}): EmbraceCast {
+  const type: EmbraceType = opt.after ? (opt.after.type === 'scoop' ? 'cover' : 'scoop') : G.rng.chance(0.5) ? 'scoop' : 'cover';
+  const taken = new Set(opt.after?.groups.flat() ?? []);
+  const pool = G.rng.shuffle(G.ents.filter((e) => !taken.has(e)));
+  if (opt.withPlayer && pool.includes(G.player)) pool.sort((a, b) => Number(b === G.player) - Number(a === G.player));
+  const picked = pool.slice(0, 12);
+  const groups = [picked.slice(0, 6), picked.slice(6)];
+  const apply = t0 + EMBRACE.cast, T = EMBRACE_TEXT[type];
   seqAdd(G, t0, '陰冷擁抱（上減益）');
-  at(G, t0, () => { setCast(G, '陰冷擁抱', EMBRACE.cast); G.extra.heart = true; say(G, '（暗黑之雲身前浮現一顆心臟）', 3); });
+  // 王只在詠唱、上減益時擺手勢；放招時不擺，要自己記住
+  G.poses.push({ type, from: t0, to: apply });
+  at(G, t0, () => { setCast(G, '陰冷擁抱', EMBRACE.cast, `看王的手勢：${embraceLine(type)}`); G.extra.heart = true; say(G, '（暗黑之雲身前浮現一顆心臟）', 3); });
 
   durs.forEach((dur, wi) => {
-    const members = groups[wi], type = types[wi], apply = t0 + EMBRACE.cast, E = apply + dur, tag = `陰冷擁抱 ${dur}s`;
+    const members = groups[wi], E = apply + dur, tag = `陰冷擁抱 ${dur}s`;
     const mine = members.includes(G.player);
     seqAdd(G, E, `攥魂之手（${dur}s・${EMBRACE_NAME[type]}）${mine ? '← 你' : ''}`, true);
-    G.poses.push({ type, from: E - EMBRACE.poseLead, to: E + 0.3 });
     const P = G.player;
     const fix = (): Fix => ({ ...P.spot, r: 1.4, face: embraceFace(type, P.spot), label: type === 'scoop' ? '外周・面向外' : '外周・面向場內' });
 
     at(G, apply, () => {
       members.forEach((e) => e.embs.push({ exp: E, type }));
       G.fx.push({ k: 'tether', members, until: G.t + 2 });
-      if (mine) alertMsg(G, `你被附加了 ${dur} 秒的暗之擁抱`, 2);
+      if (mine) alertMsg(G, `暗之擁抱 ${dur} 秒｜記住：${T.icon} ${T.hand} → ${T.how}`, 3);
     });
-    at(G, E - 8, () => { if (mine) G.embHint = { ...P.spot, r: 1.4, label: '到外周處理' }; });
+    // 該去外周時提醒手勢（王放招時不會再擺）
+    at(G, E - 8, () => {
+      if (!mine) return;
+      alertMsg(G, `去外周！你的手勢：${embraceLine(type)}`, 3.2, true);
+      G.embHint = { ...P.spot, r: 1.4, label: `到外周・${T.icon} ${T.how}` };
+    });
     // Bot：提前 6 秒開疾跑去外周（覆蓋其他機制的跑位）
     at(G, E - 6, () => members.forEach((e) => { if (isBot(G, e)) { e.ov = { ...e.spot, emb: E }; e.buffs.sprint = G.t + 5; } }));
     at(G, E - EMBRACE.warnAt, () => {
       if (!mine) return;
-      alertMsg(G, '攥魂之手即將出現', 2.2, true);
-      G.embHint = { ...P.spot, r: 1.4, label: type === 'scoop' ? '結束時面向外，手出現後往內走' : '面向場內，往內走' };
+      alertMsg(G, `攥魂之手即將出現：${T.icon} ${T.how}`, 2.2, true);
+      G.embHint = { ...P.spot, r: 1.4, label: `${T.icon} ${T.how}` };
     });
     // Bot：結束前 2 秒鎖定正確面向
     at(G, E - 2, () => members.forEach((e) => { if (isBot(G, e)) e.faceLock = embraceFace(type, e); }));
@@ -103,7 +118,7 @@ export function embraceCast(G: GameState, t0: number, durs: number[], opt: Embra
         const m = my as { face: number; H: number; ed: number; outOk: boolean } | null;
         if (!m) bad(G, tag, '減益結束前已陣亡', fix());
         else {
-          good(G, tag, `手勢：${type === 'scoop' ? '🫴 右手撈起（王的左手在身後）：手出現在你後方' : '🫳 右手包覆（王的左手在身前）：手出現在你前方'}`, fix());
+          good(G, tag, `手勢：${T.icon} ${T.hand}・${T.other}：手出現在你${type === 'scoop' ? '後方' : '前方'}`, fix());
           if (m.ed <= EMBRACE.edgeOk) good(G, tag, `在外周處理（離場邊 ${m.ed.toFixed(1)} m）`, fix());
           else bad(G, tag, `離場邊 ${m.ed.toFixed(1)} m，沒有到外周`, fix());
           const ft = `你面向${DIRNAME(m.face)}，手朝${DIRNAME(m.H)}打`;
@@ -118,5 +133,5 @@ export function embraceCast(G: GameState, t0: number, durs: number[], opt: Embra
     // Bot：判定完就放開「往內走」，回到目前機制的站位（才趕得上下一個機制）
     at(G, E + EMBRACE.handDelay + 0.2, () => members.forEach((e) => { if (isBot(G, e) && e.ov && e.ov.emb === E) e.ov = null; }));
   });
-  return groups;
+  return { groups, type };
 }

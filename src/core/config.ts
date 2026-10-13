@@ -2,7 +2,8 @@
 import { store } from './storage';
 import type { Alliance, Role } from './constants';
 
-export type ActType = 'sprint' | 'akb' | 'dash';
+export type PickMode = 'one' | 'cont' | 'rand';
+export type ActType = 'sprint' | 'akb' | 'dash' | 'interject';
 export type DashDir = 'fwd' | 'back' | 'left' | 'right';
 
 export interface ActionConfig {
@@ -40,6 +41,10 @@ export interface Config {
   al: Alliance;
   role: Role;
   drill: string;
+  /** 練習方式（三選一）：單一階段／從指定階段連續打到最後／隨機練習 */
+  pick: PickMode;
+  /** 隨機練習：可否重複、分鐘數、選的機制（空＝全部） */
+  rand: { repeat: boolean; mins: number; ids: string[] };
 }
 
 export const MAX_ACTS = 8;
@@ -49,19 +54,27 @@ export const DEFAULT_ACTS: readonly ActionConfig[] = [
   { name: '防擊退', type: 'akb', code: 'Digit2', label: '2', dist: 0, dur: 6, cd: 120 },
   { name: '前衝', type: 'dash', dir: 'fwd', code: 'Digit3', label: '3', dist: 15, dur: 0, cd: 30 },
   { name: '後跳', type: 'dash', dir: 'back', code: 'Digit4', label: '4', dist: 10, dur: 0, cd: 30 },
+  { name: '插言', type: 'interject', code: 'Digit5', label: '5', dist: 0, dur: 0, cd: 30 },
 ];
 
 export const cloneActs = (a: readonly ActionConfig[]): ActionConfig[] => JSON.parse(JSON.stringify(a));
 
 export function defaultConfig(): Config {
-  return { auto: true, speed: 1, hint: true, text: true, tele: true, failMode: 'stop', dur: 14, cdReset: true, cam: 'fixed', sound: true, acts: cloneActs(DEFAULT_ACTS), al: 'A', role: 'D3', drill: 'tl1' };
+  return { auto: true, speed: 1, hint: true, text: true, tele: true, failMode: 'stop', dur: 14, cdReset: true, cam: 'fixed', sound: true, acts: cloneActs(DEFAULT_ACTS), al: 'A', role: 'D3', drill: 'run:one:p1', pick: 'one', rand: { repeat: true, mins: 3, ids: [] } };
+}
+
+/** 舊設定沒有插言（P3 打斷小王用）：補在最後 */
+function withInterject(acts: ActionConfig[]): ActionConfig[] {
+  if (acts.some((a) => a.type === 'interject') || acts.length >= MAX_ACTS) return acts;
+  return [...acts, { ...DEFAULT_ACTS.find((a) => a.type === 'interject')! }];
 }
 
 export function loadConfig(): Config {
   const d = defaultConfig();
   return {
     auto: store.get('auto', d.auto),
-    speed: store.get('speed', d.speed),
+    // 舊版截圖網址會把速度存成 0，讀到不合理的值就用預設
+    speed: (() => { const v = store.get('speed', d.speed); return typeof v === 'number' && v > 0 ? v : d.speed; })(),
     hint: store.get('hint', d.hint),
     text: store.get('text', d.text),
     tele: store.get('tele', d.tele),
@@ -70,10 +83,12 @@ export function loadConfig(): Config {
     cdReset: store.get('cdReset', d.cdReset),
     cam: store.get('cam', d.cam),
     sound: store.get('sound', d.sound),
-    acts: store.get<ActionConfig[] | null>('acts', null) || d.acts,
+    acts: withInterject(store.get<ActionConfig[] | null>('acts', null) || d.acts),
     al: store.get('al', d.al),
     role: store.get('role', d.role),
     drill: store.get('drill', d.drill),
+    pick: store.get('pick', d.pick),
+    rand: store.get('rand', d.rand),
   };
 }
 

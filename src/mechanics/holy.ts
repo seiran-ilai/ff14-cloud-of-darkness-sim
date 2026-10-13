@@ -11,7 +11,7 @@ import { HOLY } from '../core/tuning';
 import { HOLY_SPOT } from '../core/positions';
 import { at, setCast, seqAdd, type Entity, type GameState } from '../game/state';
 import { good, bad, warn, botHit } from '../game/results';
-import { claim, npcHome, npcs } from '../game/bots';
+import { claim, npcSettle, npcs } from '../game/bots';
 
 const partyName = (p: Party): string => (p === 'MT' ? '前排（MT 組）' : '後排（ST 組）');
 
@@ -22,7 +22,7 @@ export function holy(G: GameState, t0: number): number {
   /** 剛丟完 B 核爆的人改進 B 後排 */
   const bFlare = (): Entity | undefined => (G.extra.flare && G.t - (G.extra.flareT ?? -99) < 6 ? G.extra.flare.B : undefined);
   at(G, t0, () => {
-    setCast(G, '黑暗神聖', HOLY.cast);
+    setCast(G, '黑暗神聖', HOLY.cast, '6 處分攤：A／B／C 由西到東，前排 MT 組、後排 ST 組');
     G.extra.holy = true;
     const bF = G.extra.flare && G.extra.flare.B;
     npcs(G).forEach((e) => {
@@ -54,6 +54,6 @@ export function holy(G: GameState, t0: number): number {
     if (d <= HOLY.stackR) good(G, tag, `進了 ${P.al} 聯盟${partyName(party)}的分攤`, fix);
     else bad(G, tag, `沒進 ${P.al} 聯盟${partyName(party)}的分攤`, fix);
   });
-  npcHome(G, t0 + 4.4, me);
+  npcSettle(G, t0 + 4.4, me);
   return t0 + 4.5;
 }

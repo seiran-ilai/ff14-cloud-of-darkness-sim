@@ -3,9 +3,12 @@ import { at, seqAdd } from '../game/state';
 import { opener, tl1, tl2 } from './timelines';
 import { singles } from './singles';
 import { p2 } from './p2';
+import { p3singles } from './p3singles';
+import { parseRun, makeRunDrill } from './run';
+import { parseRand, makeRandDrill } from './random';
 
 /** 所有練習項目；順序即畫面上按鈕順序 */
-export const DRILLS: Record<string, Drill> = { opener, tl1, tl2, ...singles, ...p2 };
+export const DRILLS: Record<string, Drill> = { opener, tl1, tl2, ...singles, ...p2, ...p3singles };
 
 /** 弱點練習的 key 前綴：weak:volley,embrace */
 export const WEAK_PREFIX = 'weak:';
@@ -28,5 +31,9 @@ export function makeWeakDrill(keys: string[]): Drill {
 
 export const getDrill = (key: string): Drill => {
   if (key.startsWith(WEAK_PREFIX)) return makeWeakDrill(key.slice(WEAK_PREFIX.length).split(','));
+  const run = parseRun(key);
+  if (run) return makeRunDrill(run.mode, run.start);
+  const rand = parseRand(key);
+  if (rand) return makeRandDrill(rand);
   return DRILLS[key] ?? DRILLS.tl1;
 };

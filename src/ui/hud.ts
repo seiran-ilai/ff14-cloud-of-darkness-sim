@@ -11,6 +11,7 @@ interface Icon { glyph: string; name: string; left: number; kind: 'debuff' | 'bu
 function icons(G: GameState): Icon[] {
   const P = G.player, out: Icon[] = [];
   P.embs.slice().sort((a, c) => a.exp - c.exp).forEach((m) => out.push({ glyph: '擁', name: '暗之擁抱', left: m.exp - G.t, kind: 'debuff', mine: true }));
+  if (P.curse && P.curse > G.t) out.push({ glyph: '詛', name: '波動的詛咒', left: P.curse - G.t, kind: 'debuff', mine: true });
   if (hasBuff(G, P, 'heavy')) out.push({ glyph: '重', name: '加重', left: P.buffs.heavy! - G.t, kind: 'debuff', mine: true });
   if (P.stun > G.t) out.push({ glyph: P.stunKind === 'stone' ? '石' : '暈', name: P.stunKind === 'stone' ? '石化' : '眩暈', left: P.stun - G.t, kind: 'debuff', mine: true });
   if (hasBuff(G, P, 'bleed')) out.push({ glyph: '血', name: '出血', left: P.buffs.bleed! - G.t, kind: 'debuff' });
@@ -30,6 +31,9 @@ export function updHUD(G: GameState | null, input: InputState): void {
     $('castN').textContent = G.cast.name;
     $('castF').style.width = k * 100 + '%';
     $('castT').textContent = Math.max(0, G.cast.start + G.cast.dur - G.t).toFixed(1);
+    const tip = $('castTip');
+    tip.hidden = !G.cast.tip;
+    tip.textContent = G.cast.tip ?? '';
   } else cw.hidden = true;
 
   const ln = $('line');
@@ -52,5 +56,13 @@ export function updHUD(G: GameState | null, input: InputState): void {
     let cur = -1;
     G.seq.forEach((s, i) => { if (s.t <= G.t + 0.01) cur = i; });
     items.forEach((li, i) => { li.classList.toggle('now', i === cur); li.classList.toggle('done', i < cur); });
+    // 目前的機制換了：把時間軸捲到它（只捲時間軸自己，不動整頁）
+    if (cur !== lastCur) {
+      lastCur = cur;
+      const list = document.getElementById('seq'), li = items[Math.max(0, cur)] as HTMLElement | undefined;
+      if (list && li) list.scrollTop = Math.max(0, li.offsetTop - list.offsetTop - list.clientHeight / 3);
+    }
   }
 }
+
+let lastCur = -2;

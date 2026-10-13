@@ -11,7 +11,7 @@ export function enhance(G: GameState, t0: number, kind: StoredKind): number {
   seqAdd(G, t0, kind === 'aero' ? '超賦風（儲存飆風）' : '超賦死（儲存極死）');
   at(G, t0, () => {
     say(G, kind === 'aero' ? '狂風，匯於我的雙腕之中！' : '死亡，匯於我的雙腕之中！', 3);
-    setCast(G, kind === 'aero' ? '超賦風' : '超賦死', ENHANCE.cast);
+    setCast(G, kind === 'aero' ? '超賦風' : '超賦死', ENHANCE.cast, `儲存到下一次暗之刃：刃炸完立刻接無讀條的${kind === 'aero' ? '飆風' : '極死'}，可開防擊退`);
   });
   at(G, t0 + ENHANCE.cast, () => { G.stored = kind; });
   return t0 + ENHANCE.cast;

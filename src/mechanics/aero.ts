@@ -6,13 +6,13 @@
  * 估計值：藍圈 6 m、擊退 16 m／0.6 秒、無讀條延遲 2 秒（見 tuning.ts AERO）。
  */
 import { O0 } from '../core/constants';
-import { dist, inArena, angOf } from '../core/geometry';
+import { dist, onP1Floor, angOf } from '../core/geometry';
 import { hitCircle } from '../core/hit';
 import { DIRNAME } from '../core/format';
 import { AERO } from '../core/tuning';
 import { at, setCast, say, alertMsg, seqAdd, hasBuff, force, type Fix, type GameState } from '../game/state';
 import { good, hurtPlayer, botHit } from '../game/results';
-import { claim, npcHome, npcs } from '../game/bots';
+import { claim, npcSettle, npcs } from '../game/bots';
 
 export function aero(G: GameState, t0: number, castLen: number): number {
   const me = claim(G, t0);
@@ -22,7 +22,7 @@ export function aero(G: GameState, t0: number, castLen: number): number {
   const P = G.player;
   const fix = (): Fix => (castLen ? { x: P.x < 0 ? -8 : 8, y: 0, r: 1.4, label: '藍圈外正東／正西' } : { x: P.x, y: P.y, r: 1.2, label: '開防擊退（或站在被擊退後仍在場內的位置）' });
   at(G, t0, () => {
-    if (castLen) { say(G, '黑暗之風，將一切送入無！', 3.5); setCast(G, '飆風', castLen); }
+    if (castLen) { say(G, '黑暗之風，將一切送入無！', 3.5); setCast(G, '飆風', castLen, '站藍圈外的正東或正西，往東西擊退（可開防擊退）'); }
     else { alertMsg(G, '雲之魔刃：飆風', 1.8, true); G.stored = null; }
     G.extra.orb = 'aero';
     G.tele.push({ k: 'blue', x: 0, y: 0, r: AERO.blueR, until: tR });
@@ -56,8 +56,8 @@ export function aero(G: GameState, t0: number, castLen: number): number {
   at(G, tR + 0.9, () => {
     if (P.dead) return;
     if (akb) good(G, tag, '開了防擊退，沒被擊退', fix());
-    else if (inArena(P.x, P.y) && !((P.fellAt ?? -Infinity) > tR)) good(G, tag, `被擊退到${DIRNAME(angOf(P.x, P.y))}，留在場上`, fix());
+    else if (onP1Floor(P, G.round) && !((P.fellAt ?? -Infinity) > tR)) good(G, tag, `被擊退到${DIRNAME(angOf(P.x, P.y))}，留在場上`, fix());
   });
-  npcHome(G, tR + 1.2, me);
+  npcSettle(G, tR + 1.2, me);
   return tR + 1.2;
 }

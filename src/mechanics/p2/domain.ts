@@ -1,5 +1,5 @@
 /*
- * 深暗領域（P2 開場）
+ * 深暗領域（P3 開場）
  * 時間點（相對 t0）：0 王開始詠唱；+cast 全場 AOE，外周環狀地板變成出血區域 bleed 秒。
  * 判定規則：出血期間站在環狀地板上（不在平臺上）算失誤。
  * TODO(確認): docs 寫「圓環區域變為持續一段時間的出血區域」，攻略寫「外周環狀地板變為即死地板」，目前照 docs 做成非致命出血。
@@ -16,7 +16,7 @@ export function domain(G: GameState, t0: number): number {
   const end = t0 + DOMAIN.cast + DOMAIN.bleed;
   const caught = new Set<Entity>();
   const onBleed = (e: Entity): boolean => onRing(e) && !onPlatform(e);
-  at(G, t0, () => setCast(G, '深暗領域', DOMAIN.cast));
+  at(G, t0, () => setCast(G, '深暗領域', DOMAIN.cast, '外周環狀地板會出血：留在平臺或格子上'));
   at(G, t0 + DOMAIN.cast, () => {
     G.fx.push({ k: 'flash', until: G.t + 0.4 });
     G.p2!.bleedUntil = end;

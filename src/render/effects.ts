@@ -1,7 +1,7 @@
 // 判定特效：連線、擊退／吸引、命中、直線、核爆、分攤、暗之刃、石化視線、連射直線
 import { BOSS } from '../core/constants';
 import { dirV } from '../core/geometry';
-import { BLADE } from '../core/tuning';
+import { BLADE, OPENER } from '../core/tuning';
 import { POCKET } from '../core/positions';
 import type { Effect, RenderState } from '../game/state';
 import { px, circle, diamondPath } from './canvas';
@@ -41,12 +41,15 @@ export function drawFx(c: CanvasRenderingContext2D, f: Effect, G: RenderState): 
       circle(c, f.x, f.y, f.r ?? 3.2); c.fill(); c.stroke();
       break;
     case 'bladeB':
-      c.fillStyle = 'rgba(255,128,48,.4)'; circle(c, BOSS.x, BOSS.y, BLADE.bothR); c.fill();
+      c.fillStyle = 'rgba(255,128,48,.4)';
+      if (f.ell) { c.beginPath(); c.ellipse(f.ell.cx, f.ell.cy, f.ell.rx, f.ell.ry, 0, 0, Math.PI * 2); c.fill(); }
+      else { circle(c, BOSS.x, BOSS.y, BLADE.bothR); c.fill(); }
       break;
     case 'bladeS': {
-      const p = POCKET(f.side);
+      const p = f.pocket ?? { ...POCKET(f.side), r: BLADE.pocketR };
       c.fillStyle = 'rgba(255,128,48,.4)';
-      diamondPath(c); c.moveTo(p.x + BLADE.pocketR, p.y); c.arc(p.x, p.y, BLADE.pocketR, 0, Math.PI * 2, true); c.fill('evenodd');
+      if (f.pocket) { c.beginPath(); c.arc(0, 0, OPENER.roundR, 0, Math.PI * 2); } else diamondPath(c);
+      c.moveTo(p.x + p.r, p.y); c.arc(p.x, p.y, p.r, 0, Math.PI * 2, true); c.fill('evenodd');
       break;
     }
     case 'gaze':

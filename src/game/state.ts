@@ -7,6 +7,18 @@ import { Scheduler } from './scheduler';
 import type { P2State } from './p2state';
 
 export type EmbraceType = 'scoop' | 'cover';
+/**
+ * 陰冷擁抱手勢文字（依攻略）：上減益時看王的手勢，記住到減益結束。
+ * cover＝🫳 右手心向下（撒鹽）、左手在身前；scoop＝🤌 右手心向上（義大利手勢）、左手在身後。
+ */
+export const EMBRACE_TEXT: Record<EmbraceType, { icon: string; hand: string; other: string; how: string }> = {
+  cover: { icon: '🫳', hand: '右手心向下（撒鹽）', other: '左手在身前', how: '面向場內直走' },
+  scoop: { icon: '🤌', hand: '右手心向上（義大利手勢）', other: '左手在身後', how: '面向場外，手出現後轉身往場內疾跑' },
+};
+export const embraceLine = (type: EmbraceType): string => {
+  const T = EMBRACE_TEXT[type];
+  return `${T.icon} ${T.hand}・${T.other} → ${T.how}`;
+};
 export type BladeMode = 'L' | 'R' | 'B';
 export type StoredKind = 'aero' | 'death';
 export type LaneFam = 'U' | 'V';
@@ -49,8 +61,14 @@ export interface Entity {
   vol?: VolleyPlan | null;
   /** P2 格子導航：目標格、剩下的路（含目前格）、已取得進入權的下一格 */
   nav?: { goal: number; path: number[]; next: number | null };
+  /** P3 波動的詛咒：結束時間（結束時朝面向射出扇形） */
+  curse?: number;
+  /** P3 頭上標記（種子彈、凝聚式、分散式、潛地式等）：種類與消失時間 */
+  mark?: { kind: 'seed' | 'charge' | 'spread' | 'dive' | 'impale'; until: number };
+  /** P3 華容道的座位（混沌迫近換位後改坐別人的位置）；沒有就是自己的 al／role */
+  seat?: { al: Alliance; role: Role };
   /** P2 Bot 刷新格子的狀態 */
-  p2r?: { phase: 'idle' | 'out' | 'wait' | 'back'; at: number; cell: number; threshold: number };
+  p2r?: { phase: 'idle' | 'out' | 'wait' | 'back'; at: number; cell: number; threshold: number; ret?: Vec };
 }
 
 export type Telegraph =
@@ -59,6 +77,12 @@ export type Telegraph =
   /** 半圓：中心 (x,y)、半徑 r、朝 a 方向的那一半（a 為角度） */
   | { k: 'half'; x: number; y: number; r: number; a: number; until: number }
   | { k: 'circle' | 'blue' | 'donut'; x: number; y: number; r: number; until: number }
+  /** 環形：r0～r1 之間 */
+  | { k: 'ring'; x: number; y: number; r0: number; r1: number; until: number }
+  /** 扇形：中心、半徑、朝 a、半張角 w */
+  | { k: 'fan'; x: number; y: number; r: number; a: number; w: number; until: number }
+  /** 通過 (x,y)、角度 a 的直線（前後都打），半寬 hw、每邊長 len（沒有就是整個場地） */
+  | { k: 'line'; x: number; y: number; a: number; hw: number; len?: number; until: number }
   | { k: 'lane'; fam: LaneFam; lanes: number[]; until: number };
 
 export interface BeamLine { al: Alliance; v: Vec }
@@ -66,10 +90,13 @@ export interface BeamLine { al: Alliance; v: Vec }
 export type Effect =
   | { k: 'flash'; until: number }
   | { k: 'tether'; members: Entity[]; until: number }
-  | { k: 'kb' | 'pull' | 'bladeB'; until: number }
+  | { k: 'kb' | 'pull'; until: number }
+  /** ell：P1 開場的橢圓範圍（沒有就是王周圍的圓） */
+  | { k: 'bladeB'; until: number; ell?: { cx: number; cy: number; rx: number; ry: number } }
   | { k: 'hit' | 'flare' | 'stack'; x: number; y: number; until: number; r?: number }
   | { k: 'lane'; fam: LaneFam; lanes: number[]; until: number }
-  | { k: 'bladeS'; side: number; until: number }
+  /** pocket：P1 開場的安全區（沒有就是 P2 的王前方安全區） */
+  | { k: 'bladeS'; side: number; until: number; pocket?: { x: number; y: number; r: number } }
   | { k: 'gaze'; srcs: Vec[]; until: number }
   | { k: 'beams'; lines: BeamLine[]; until: number }
   /** 預兆判定瞬間的爆發特效 */
@@ -83,7 +110,8 @@ export interface Hint { x: number; y: number; r?: number; label?: string; cells?
 /** Bot（非玩家）違反規則被打中的紀錄：自動測試要求為 0 */
 export interface BotFail { t: number; tag: string; who: string; why: string }
 export type Sfx = 'cast' | 'hit' | 'ok' | 'ng' | 'alert';
-export interface Cast { name: string; start: number; dur: number }
+/** tip：詠唱條下方的處理提示 */
+export interface Cast { name: string; start: number; dur: number; tip?: string }
 export interface TimedText { text: string; until: number; danger?: boolean }
 export interface SeqItem { t: number; label: string; emb?: boolean }
 export interface Pose { type: EmbraceType; from: number; to: number }
@@ -91,6 +119,8 @@ export interface VolleyRound { fam: LaneFam; lanes: number[]; glow: number; fire
 
 export interface Extra {
   heart?: boolean;
+  /** P1 → P2 前的範圍提示：到這個時間前畫出會消失的外圍 */
+  gemWarn?: number;
   clouds?: { rounds: VolleyRound[]; until: number };
   flare?: Record<Alliance, Entity>;
   flareT?: number;
@@ -145,18 +175,22 @@ export interface GameState {
   startAt: number;
   /** 本局每個機制目前處理情形（給失誤統計）：tag → 有沒有失誤 */
   mech: Record<string, boolean>;
-  /** P2 華容道（沒有就是 P1 菱形場地） */
+  /** P1 開場（準備階段）的圓形場地；暗之大泛濫後變成 P2 魔法陣 */
+  round?: boolean;
+  /** P3（程式裡沿用 p2 命名；沒有就是 P1 圓形／P2 菱形場地） */
   p2?: P2State;
+  /** 最後一次用插言（打斷）的時間 */
+  lastInterject?: number;
   /** 錯誤即停：讓這局停下來的那個失誤 */
   stopCheck?: Check;
 }
 
 /** 渲染只需要的部分狀態（回放時用錄下來的影格組出同樣的形狀） */
-export type RenderState = Pick<GameState, 't' | 'ents' | 'player' | 'tele' | 'fx' | 'extra' | 'poses' | 'stored' | 'hints' | 'embHint' | 'cast' | 'p2'>;
+export type RenderState = Pick<GameState, 't' | 'ents' | 'player' | 'tele' | 'fx' | 'extra' | 'poses' | 'stored' | 'hints' | 'embHint' | 'cast' | 'round' | 'p2'>;
 
 export interface Drill {
   tl?: boolean;
-  /** 練習項目分組（畫面上的按鈕列）：P1 時間軸／P1 單一機制／P2 */
+  /** 練習項目分組（畫面上的按鈕列）：P1／P2 時間軸／P2 單一機制／P3（'p2'） */
   group?: 'p2';
   name: string;
   sub: string;
@@ -181,7 +215,7 @@ export function createState(cfg: Config, auto: boolean, rng: Rng, drill: Drill):
 
 // ---- 狀態小工具（機制檔共用） ----
 export const at = (G: GameState, t: number, fn: () => void): void => G.ev.at(t, fn);
-export const setCast = (G: GameState, name: string, dur: number): void => { G.cast = { name, start: G.t, dur }; G.sfx.push('cast'); };
+export const setCast = (G: GameState, name: string, dur: number, tip?: string): void => { G.cast = { name, start: G.t, dur, tip }; G.sfx.push('cast'); };
 export const say = (G: GameState, text: string, dur = 4): void => { G.line = { text, until: G.t + dur }; };
 export const alertMsg = (G: GameState, text: string, dur = 2, danger?: boolean): void => {
   G.alert = { text, until: G.t + dur, danger };

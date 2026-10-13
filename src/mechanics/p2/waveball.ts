@@ -11,44 +11,47 @@
  */
 import { WAVEBALL, TRIPLE } from '../../core/tuning';
 import { hitCircle } from '../../core/hit';
-import { CELLS, cellsTouching, crossCells, cellPath, cornerOfCell, cellUnder, center, rel, p2Home, zoneOf, type Cell, type Side } from '../../core/p2';
+import { CELLS, cellsTouching, crossCells, cellPath, cornerOfCell, cellUnder, center, rel, homeE, zoneE, roleE, type Cell, type Side } from '../../core/p2';
 import type { Role, Vec } from '../../core/constants';
 import { at, setCast, alertMsg, seqAdd, type Entity, type Fix, type GameState } from '../../game/state';
 import { good, bad, botHit } from '../../game/results';
 import { isBot } from '../../game/bots';
-import { p2Goto } from '../../game/p2nav';
+import { cornerMembers, rearrange } from '../../game/p3plan';
 import type { InnerTower, OuterTower } from '../../game/p2state';
 
 const GROUP1: Role[] = ['MT', 'D1', 'D3'];
-const groupOf = (r: Role): 1 | 2 => (GROUP1.includes(r) ? 1 : 2);
 
 /** 把一個角落的 3 個人分配到 3 個塔格：總路徑最短 */
 function assignCorner(people: Entity[], cells: Cell[]): Map<Entity, Cell> {
   const perms = (a: Cell[]): Cell[][] => (a.length <= 1 ? [a] : a.flatMap((x, i) => perms([...a.slice(0, i), ...a.slice(i + 1)]).map((p) => [x, ...p])));
   let best: Cell[] = cells, bestCost = Infinity;
   for (const p of perms(cells)) {
-    const cost = people.reduce((s, e, i) => s + (cellPath(cellUnder(p2Home(e.al, e.role))!, p[i])?.length ?? 99), 0);
+    const cost = people.reduce((s, e, i) => s + (cellPath(cellUnder(homeE(e))!, p[i])?.length ?? 99), 0);
     if (cost < bestCost) { bestCost = cost; best = p; }
   }
   return new Map(people.map((e, i) => [e, best[i]]));
 }
 
 /** 外場三人塔裡 3 個人的站位（沿塔的切線方向排，不會超出平臺） */
-function outerSpot(t: OuterTower, role: Role, side: Side): Vec {
-  const k = (groupOf(role) === 1 ? GROUP1 : (['H2', 'D2', 'D4'] as Role[])).indexOf(role) - 1;
+function outerSpot(t: OuterTower, role: Role, side: Side, g1: Role[] = GROUP1): Vec {
+  const k = (g1.includes(role) ? g1 : (['MT', 'H2', 'D1', 'D2', 'D3', 'D4'] as Role[]).filter((r) => !g1.includes(r))).indexOf(role) - 1;
   const alongY = Math.abs(t.y) < 0.1; // 前後的塔：沿 y 排；左右的塔：沿 x 排
   return alongY ? { x: t.x, y: t.y + k * 1.2 } : { x: t.x + side * k * 1.2, y: t.y };
 }
 
-export function waveball(G: GameState, t0: number, outerAfter: number): number {
+/** g1：踩 12／9 點塔的外場座位（第二次：換位前在內場的人＝MT、H2、D1） */
+export function waveball(G: GameState, t0: number, outerAfter: number, g1: Role[] = GROUP1): number {
+  const gOf = (r: Role): 1 | 2 => (g1.includes(r) ? 1 : 2);
   const tag = '波動球（踩塔）';
   seqAdd(G, t0, '波動球（出塔）');
   const tOn = t0 + WAVEBALL.cast, tRes = tOn + WAVEBALL.soak;
-  const P = G.player, pz = zoneOf(P.al, P.role);
+  const P = G.player;
+  // 換位後玩家的區域會變：判定時才讀
+  const pzOf = (): ReturnType<typeof zoneE> => zoneE(P);
   const assign = new Map<Entity, Cell>();
   let outer: OuterTower[] = [];
   // 詠唱條先顯示小王的三重暗之戰技，結束後換成王的波動球剩餘時間
-  at(G, t0 + TRIPLE.cast + 0.01, () => setCast(G, '波動球', tOn - G.t));
+  at(G, t0 + TRIPLE.cast + 0.01, () => setCast(G, '波動球', tOn - G.t, '出塔：內場踩自己角落的塔格；外場 MT/D1/D3 踩 12／9 點、H2/D2/D4 踩 6／3 點'));
   at(G, tOn, () => {
     const s = G.p2!;
     alertMsg(G, '波動球：塔出現了', 2);
@@ -58,7 +61,7 @@ export function waveball(G: GameState, t0: number, outerAfter: number): number {
       const [c, ...arms] = crossCells(k);
       const pick = G.rng.shuffle(arms);
       s.innerTowers.push({ cells: [c.idx, pick[0].idx], need: 2 }, { cells: [pick[1].idx], need: 1 });
-      const people = G.ents.filter((e) => zoneOf(e.al, e.role) === 'in' && cornerOfCell(cellUnder(p2Home(e.al, e.role))!) === k);
+      const people = G.ents.filter((e) => zoneE(e) === 'in' && cornerOfCell(cellUnder(homeE(e))!) === k);
       assignCorner(people, [c, pick[0], pick[1]]).forEach((cell, e) => assign.set(e, cell));
     }
     // 外場：前後或左右
@@ -75,15 +78,18 @@ export function waveball(G: GameState, t0: number, outerAfter: number): number {
   });
   // 三重暗之戰技處理完才去踩（內場凸出格離小王近，太早動會被單手球打到）
   at(G, Math.max(tOn, outerAfter) + 0.05, () => {
-    // 內場：同時把所有人的路算好，讓要經過的人先過
-    G.ents.forEach((e) => { const c = assign.get(e); if (c && isBot(G, e) && !e.dead) p2Goto(G, e, center(c)); });
+    // 內場：每個角落一格一格搬到塔格（不會擠格）
+    for (let k = 0; k < 4; k++) {
+      const goals = new Map([...assign].filter(([e]) => cornerMembers(G, k).includes(e)));
+      rearrange(G, k, goals, G.t, tRes - 0.2);
+    }
     G.ents.forEach((e) => {
-      const z = zoneOf(e.al, e.role);
+      const z = zoneE(e);
       if (z === 'in' || !isBot(G, e) || e.dead) return;
-      e.mt = outerSpot(outer.find((t) => t.side === z && t.group === groupOf(e.role))!, e.role, z);
+      e.mt = outerSpot(outer.find((t) => t.side === z && t.group === gOf(roleE(e)))!, roleE(e), z, g1);
     });
-    if (pz === 'in' && G.cfg.hint && !G.auto) G.hints = [{ ...center(assign.get(P)!), r: 1.4, label: '去踩你的塔' }];
-    if (pz !== 'in' && G.cfg.hint && !G.auto) { const t = outer.find((o) => o.side === pz && o.group === groupOf(P.role))!; G.hints = [{ x: t.x, y: t.y, r: t.r, label: '你的塔' }]; }
+    if (pzOf() === 'in' && assign.has(P) && G.cfg.hint && !G.auto) G.hints = [{ ...center(assign.get(P)!), r: 1.4, label: '去踩你的塔' }];
+    if (pzOf() !== 'in' && G.cfg.hint && !G.auto) { const t = outer.find((o) => o.side === pzOf() && o.group === gOf(roleE(P)))!; G.hints = [{ x: t.x, y: t.y, r: t.r, label: '你的塔' }]; }
   });
   at(G, tRes, () => {
     const s = G.p2!;
@@ -104,7 +110,7 @@ export function waveball(G: GameState, t0: number, outerAfter: number): number {
       const inside = inOuter(t);
       if (inside.length >= t.need) return;
       G.ents.forEach((e) => {
-        if (!e.isPlayer && !e.dead && zoneOf(e.al, e.role) === t.side && groupOf(e.role) === t.group && !inside.includes(e)) botHit(G, e, tag, '沒踩到外場塔');
+        if (!e.isPlayer && !e.dead && zoneE(e) === t.side && gOf(roleE(e)) === t.group && !inside.includes(e)) botHit(G, e, tag, '沒踩到外場塔');
       });
     });
     const towers = s.innerTowers;
@@ -112,8 +118,9 @@ export function waveball(G: GameState, t0: number, outerAfter: number): number {
     s.outerTowers = [];
     // 玩家
     if (P.dead) return;
-    if (pz === 'in') {
-      const mine = assign.get(P)!;
+    if (pzOf() === 'in') {
+      const mine = assign.get(P);
+      if (!mine) return;
       const fix: Fix = { ...center(mine), r: 1.4, label: '你的塔格' };
       const tower = towers.find((x) => x.cells.includes(mine.idx))!;
       const n = onCells(tower).length;
@@ -121,8 +128,8 @@ export function waveball(G: GameState, t0: number, outerAfter: number): number {
       else if (n < tower.need) bad(G, tag, `${tower.need === 2 ? '雙人' : '單人'}塔只有 ${n} 人`, fix);
       else good(G, tag, `踩到自己的內場${tower.need === 2 ? '雙人' : '單人'}塔`, fix);
     } else {
-      const t = outer.find((o) => o.side === pz && o.group === groupOf(P.role))!;
-      const fix: Fix = { x: t.x, y: t.y, r: t.r, label: groupOf(P.role) === 1 ? '12／9 點的塔' : '6／3 點的塔' };
+      const t = outer.find((o) => o.side === pzOf() && o.group === gOf(roleE(P)))!;
+      const fix: Fix = { x: t.x, y: t.y, r: t.r, label: gOf(roleE(P)) === 1 ? '12／9 點的塔' : '6／3 點的塔' };
       const inside = inOuter(t);
       if (!inside.includes(P)) bad(G, tag, '沒踩到自己的外場塔', fix);
       else if (inside.length < t.need) bad(G, tag, `塔只有 ${inside.length} 人（需要 ${t.need} 人）`, fix);

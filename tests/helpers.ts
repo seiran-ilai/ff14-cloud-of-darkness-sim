@@ -16,7 +16,7 @@ export function makeSession(drill: string, al: Alliance, role: Role, record = fa
 }
 
 export function runToEnd(s: Session, G: GameState): void {
-  for (let i = 0; i < 200 / DT && G.state !== 'end'; i++) s.step(DT);
+  for (let i = 0; i < 900 / DT && G.state !== 'end'; i++) s.step(DT);
 }
 
 export function runDemo(drill: string, al: Alliance, role: Role, seed: number, startAt = 0, record = false): RunResult {

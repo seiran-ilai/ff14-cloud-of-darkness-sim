@@ -1,6 +1,6 @@
 // Canvas 基礎：尺寸、鏡頭、世界↔螢幕座標、像素換算與文字
 import { R, type Vec } from '../core/constants';
-import { VIEW_FIXED, VIEW_FOLLOW } from '../core/tuning';
+import { VIEW_FIXED, VIEW_FIXED_CY, VIEW_FOLLOW } from '../core/tuning';
 
 export const FF = '"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif';
 
@@ -31,7 +31,7 @@ export function resize(): void {
 /** 鏡頭：fixed＝整個場地、北在上；follow＝跟隨角色並放大（仍是北在上） */
 export function setCamera(mode: 'fixed' | 'follow', focus: Vec): void {
   if (mode === 'follow') { view.cx = focus.x; view.cy = focus.y; view.VIEW = VIEW_FOLLOW; }
-  else { view.cx = 0; view.cy = 0; view.VIEW = VIEW_FIXED; }
+  else { view.cx = 0; view.cy = VIEW_FIXED_CY; view.VIEW = VIEW_FIXED; }
   view.SCALE = view.cv.width / (view.VIEW * 2);
 }
 

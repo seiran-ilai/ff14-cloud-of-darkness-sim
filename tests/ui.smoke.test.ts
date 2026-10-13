@@ -25,18 +25,34 @@ beforeAll(async () => {
 
 describe('UI 冒煙測試', () => {
   it('初始畫面：練習項目、技能列、說明、準備畫面', () => {
-    expect(document.querySelectorAll('#drillsTl .drill').length).toBe(3);
+    expect(document.querySelectorAll('#drillsMode [data-mode]').length).toBe(3); // 單一階段／連續／隨機
+    expect(document.querySelectorAll('#drillsTl .drill').length).toBe(3); // P1、P2／P4、P3
     expect(document.querySelectorAll('#drillsOne .drill').length).toBeGreaterThan(5);
-    expect(document.querySelectorAll('#bar .slot').length).toBe(4);
-    expect(document.getElementById('brief')!.textContent).toContain('時間軸 1');
-    expect(document.getElementById('oStart')).not.toBeNull();
-    expect(document.querySelectorAll('#oMode .chip').length).toBe(2);
+    expect(document.querySelectorAll('#bar .slot').length).toBe(5);
+    expect(document.getElementById('brief')!.textContent).toContain('單一階段・P1 開場');
+    expect(document.querySelectorAll('#ov [data-mode]').length).toBe(2);
     frames(120);
-    expect(document.getElementById('oStart')).not.toBeNull(); // 沒按開始就不會倒數
+    expect(document.querySelector('#ov [data-mode]')).not.toBeNull(); // 沒按開始就不會倒數
+  });
+
+  it('隨機練習：勾選樹、取消一個階段', () => {
+    (document.querySelector('#drillsMode [data-mode="rand"]') as HTMLButtonElement).click();
+    expect(document.getElementById('rTree')).not.toBeNull();
+    expect(document.querySelectorAll('#rMins .chip').length).toBe(5);
+    const p3 = document.querySelector('#rTree [data-ph="p3"]') as HTMLInputElement;
+    expect(p3.checked).toBe(true);
+    p3.checked = false;
+    p3.dispatchEvent(new Event('change', { bubbles: true }));
+    expect((document.querySelector('#rTree [data-ph="p3"]') as HTMLInputElement).checked).toBe(false);
+    expect(document.getElementById('brief')!.textContent).toContain('隨機練習');
+    // 回到連續模式（後面的測試用）
+    (document.querySelector('#drillsMode [data-mode="cont"]') as HTMLButtonElement).click();
+    expect(document.getElementById('brief')!.textContent).toContain('連續・從 P1 開場 開始');
+    (document.querySelector('#drillsMode [data-mode="one"]') as HTMLButtonElement).click();
   });
 
   it('按開始後倒數、開打，移動與技能有效、HUD 更新', () => {
-    (document.getElementById('oStart') as HTMLButtonElement).click();
+    (document.querySelector('#ov [data-mode="stop"]') as HTMLButtonElement).click();
     expect(document.querySelector('#ov .count')).not.toBeNull();
     frames(200);
     expect(document.getElementById('ov')!.hidden).toBe(true);
@@ -56,7 +72,7 @@ describe('UI 冒煙測試', () => {
     expect(document.getElementById('ov')!.hidden).toBe(true);
     (document.getElementById('openSet') as HTMLButtonElement).click();
     expect(document.getElementById('modal')!.hidden).toBe(false);
-    expect(document.querySelectorAll('#acts .act').length).toBe(4);
+    expect(document.querySelectorAll('#acts .act').length).toBe(5);
     (document.getElementById('closeSet') as HTMLButtonElement).click();
     expect(document.getElementById('modal')!.hidden).toBe(true);
   });

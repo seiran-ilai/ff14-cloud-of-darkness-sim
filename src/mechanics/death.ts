@@ -12,7 +12,7 @@ import { hitCircle, insideCircle } from '../core/hit';
 import { DEATH } from '../core/tuning';
 import { at, setCast, say, alertMsg, seqAdd, hasBuff, force, type Entity, type Fix, type GameState } from '../game/state';
 import { good, warn, hurtPlayer, botHit } from '../game/results';
-import { claim, npcHome, npcs } from '../game/bots';
+import { claim, npcSettle, npcs } from '../game/bots';
 
 export function death(G: GameState, t0: number, castLen: number): number {
   const me = claim(G, t0);
@@ -24,7 +24,7 @@ export function death(G: GameState, t0: number, castLen: number): number {
   const fixOut = (): Fix => ({ x: side(P) * (R - 2.8), y: 0, r: 2, label: castLen ? '先到東／西端，被吸後停在中央圓外' : '開防擊退，留在中央圓外' });
   const fixIn: Fix = { x: 0, y: 0, r: DEATH.circleR - 0.5, label: '中央圓炸完後進中央' };
   at(G, t0, () => {
-    if (castLen) { say(G, '死亡不過是回歸於無的過程而已……', 3.5); setCast(G, '極死', castLen); }
+    if (castLen) { say(G, '死亡不過是回歸於無的過程而已……', 3.5); setCast(G, '極死', castLen, '先到東或西端點，被吸到中央附近先停；中央圓炸完再進中央躲環形'); }
     else { alertMsg(G, '雲之魔刃：極死', 1.8, true); G.stored = null; }
     G.extra.orb = 'death';
     if (castLen) {
@@ -76,6 +76,6 @@ export function death(G: GameState, t0: number, castLen: number): number {
     if (ok) good(G, tag, '環形判定時在中央圓內', fixIn);
     else hurtPlayer(G, tag, '環形判定時不在中央圓內（死亡宣告）', true, fixIn);
   });
-  npcHome(G, tP + 4.7, me);
+  npcSettle(G, tP + 4.7, me);
   return tP + 4.6;
 }

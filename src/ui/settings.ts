@@ -4,13 +4,14 @@ import type { Session } from '../game/session';
 import { $, seg } from './dom';
 import { renderBar } from './actionbar';
 
-const TYPE_NAME: Record<ActType, string> = { sprint: '疾跑（加速）', akb: '防擊退', dash: '位移' };
+const TYPE_NAME: Record<ActType, string> = { sprint: '疾跑（加速）', akb: '防擊退', dash: '位移', interject: '插言（打斷）' };
 const DIRS: [string, string][] = [['fwd', '前'], ['back', '後'], ['left', '左'], ['right', '右']];
 
 /** 正在等待按鍵的技能列索引（−1 表示沒有） */
 let capturing = -1;
 
-export const isSettingsOpen = (): boolean => !$('modal').hidden;
+/** 設定或操作說明開著：遊戲暫停推進 */
+export const isSettingsOpen = (): boolean => !$('modal').hidden || !$('help').hidden;
 
 function onoff(cfg: Config, el: HTMLElement, key: 'auto' | 'hint' | 'text' | 'tele' | 'cdReset' | 'sound'): void {
   seg(el, ['on', 'off'], cfg[key] ? 'on' : 'off', (v) => { cfg[key] = v === 'on'; saveConfig(cfg); renderSettings(cfg); }, (v) => (v === 'on' ? '開' : '關'));
@@ -23,7 +24,6 @@ export function renderSettings(cfg: Config): void {
   onoff(cfg, $('setHint'), 'hint');
   onoff(cfg, $('setText'), 'text');
   onoff(cfg, $('setTele'), 'tele');
-  seg($('setMode'), ['stop', 'continue'], cfg.failMode, (v) => { cfg.failMode = v as Config['failMode']; saveConfig(cfg); renderSettings(cfg); }, (v) => (v === 'stop' ? '錯誤即停' : '錯誤不停'));
   onoff(cfg, $('setCd'), 'cdReset');
   seg($('setSpeed'), [0.6, 0.8, 1], cfg.speed, (v) => { cfg.speed = +v; saveConfig(cfg); renderSettings(cfg); }, (v) => v + 'x');
   seg($('setDur'), [10, 14, 20, 30], cfg.dur, (v) => { cfg.dur = +v; saveConfig(cfg); renderSettings(cfg); }, (v) => v + ' 秒');
@@ -33,7 +33,7 @@ export function renderSettings(cfg: Config): void {
     <select data-f="type" aria-label="類型" id="at${i}">${Object.entries(TYPE_NAME).map(([k, n]) => `<option value="${k}" ${a.type === k ? 'selected' : ''}>${n}</option>`).join('')}</select>
     ${a.type === 'dash' ? `<span style="display:flex;gap:4px">${cap(i)}<select data-f="dir" aria-label="方向" id="ad${i}">${DIRS.map(([k, n]) => `<option value="${k}" ${(a.dir || 'fwd') === k ? 'selected' : ''}>${n}</option>`).join('')}</select></span>` : cap(i)}
     ${a.type === 'dash' ? `<input data-f="dist" type="number" min="1" max="40" value="${a.dist}" aria-label="距離" id="am${i}">` : '<span class="muted">—</span>'}
-    ${a.type !== 'dash' ? `<input data-f="dur" type="number" min="1" max="30" value="${a.dur}" aria-label="持續" id="au${i}">` : '<span class="muted">—</span>'}
+    ${a.type !== 'dash' && a.type !== 'interject' ? `<input data-f="dur" type="number" min="1" max="30" value="${a.dur}" aria-label="持續" id="au${i}">` : '<span class="muted">—</span>'}
     <input data-f="cd" type="number" min="0" max="300" value="${a.cd}" aria-label="冷卻" id="ac${i}">
     <button class="btn ghost sm" data-del="${i}">刪除</button></div>`).join('');
 }
@@ -88,4 +88,6 @@ export function bindSettings(session: Session): void {
   $('resetAct').onclick = () => { cfg.acts = cloneActs(DEFAULT_ACTS); saveConfig(cfg); renderSettings(cfg); renderBar(cfg); };
   $('openSet').onclick = () => { session.pause(); $('modal').hidden = false; renderSettings(cfg); };
   $('closeSet').onclick = () => { capturing = -1; $('modal').hidden = true; };
+  $('openHelp').onclick = () => { session.pause(); $('help').hidden = false; };
+  $('closeHelp').onclick = () => { $('help').hidden = true; };
 }

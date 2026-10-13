@@ -4,7 +4,7 @@ import { fromUV, laneC } from '../core/geometry';
 import { HALF } from '../core/constants';
 import { VOLLEY } from '../core/tuning';
 import type { Config } from '../core/config';
-import type { EmbraceType, RenderState as GameState } from '../game/state';
+import { EMBRACE_TEXT, type EmbraceType, type RenderState as GameState } from '../game/state';
 import { px, text, circle } from './canvas';
 
 export function drawBoss(c: CanvasRenderingContext2D, G: GameState, cfg: Config): void {
@@ -41,39 +41,33 @@ export function drawBoss(c: CanvasRenderingContext2D, G: GameState, cfg: Config)
 export const activePose = (G: GameState): EmbraceType | null =>
   G.poses.filter((p) => G.t >= p.from && G.t <= p.to).sort((a, b) => a.to - b.to)[0]?.type ?? null;
 
-/** 手勢文字（依攻略原文） */
-export const POSE_TEXT: Record<EmbraceType, { icon: string; name: string; left: string; how: string }> = {
-  cover: { icon: '🫳', name: '右手包覆（手心向下）', left: '王的左手伸到身前', how: '手從上方包覆：手出現在你前方 → 面向場內一路往前走' },
-  scoop: { icon: '🫴', name: '右手撈起（手心向上）', left: '王的左手伸到身後', how: '手從下方撈起：手出現在你後方 → 結束時面向外，手出現後再轉身往內走' },
-};
-
 const EMOJI_FONT = '"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
 
 /**
- * 陰冷擁抱手勢（依攻略）：
- * 🫳 右手包覆＝手心向下蓋住心臟，王的左手伸到身前；🫴 右手撈起＝手心向上托住心臟，王的左手伸到身後。
+ * 陰冷擁抱手勢（依攻略，只在詠唱、上減益時擺出）：
+ * 🫳 右手心向下（撒鹽），左手在身前；🤌 右手心向上（義大利手勢），左手在身後。
  * inset＝跟隨鏡頭右上角的小窗：只畫圖示，不畫手臂與說明。
  */
 export function drawPose(c: CanvasRenderingContext2D, type: EmbraceType, cfg: Config, inset = false): void {
-  const hx = BOSS.x, hy = BOSS.y + 8, T = POSE_TEXT[type];
+  const hx = BOSS.x, hy = BOSS.y + 8, T = EMBRACE_TEXT[type];
   c.save();
   if (!inset) {
-    // 王的左手（王面向南，左手在畫面右側＝東）：伸到身前（南）或身後（北）
+    // 王的左手（王面向南，左手在畫面東）：包覆＝伸到身前（南），撈起＝伸到身後（北）
     const front = type === 'cover';
     const sx = BOSS.x + 3.8, sy = BOSS.y + 0.3, ex = BOSS.x + 7.2, ey = BOSS.y + (front ? 6.5 : -6.5);
     c.strokeStyle = '#e9b949'; c.lineWidth = px(7); c.lineCap = 'round';
     c.beginPath(); c.moveTo(sx, sy); c.quadraticCurveTo(BOSS.x + 7.5, BOSS.y, ex, ey); c.stroke();
     c.fillStyle = '#ffd36b'; circle(c, ex, ey, 1.2); c.fill();
-    text(c, front ? '左手・身前' : '左手・身後', ex + 3.6, ey, 12, '#ffd36b', 700);
+    text(c, T.other.replace('在', '・'), ex + 3.6, ey, 12, '#ffd36b', 700);
   }
-  // 右手手勢圖示，畫在心臟上
+  // 手勢圖示，畫在心臟上
   c.font = `${px(inset ? 64 : 46)}px ${EMOJI_FONT}`;
   c.textAlign = 'center'; c.textBaseline = 'middle';
   c.fillText(T.icon, hx, hy);
   c.restore();
   if (!inset && cfg.text) {
-    text(c, `${T.icon} ${T.name}`, hx, hy + 4.3, 14, '#ffd36b');
-    text(c, `${T.left}`, hx, hy + 6.6, 12, '#ffe6a3', 700);
+    text(c, `${T.icon} ${T.hand}`, hx, hy + 4.3, 14, '#ffd36b');
+    text(c, T.other, hx, hy + 6.6, 12, '#ffe6a3', 700);
     text(c, T.how, hx, hy + 8.6, 11.5, '#eadff9', 700);
   }
 }

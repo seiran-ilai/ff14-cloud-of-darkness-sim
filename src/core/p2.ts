@@ -1,4 +1,4 @@
-// P2 華容道的場地幾何：井字內場格子、東西平臺、環狀地板、攻略站位（docs/p2-strategy.md）
+// P2的場地幾何：井字內場格子、東西平臺、環狀地板、攻略站位（docs/p2-strategy.md）
 import { P2, HIT } from './tuning';
 import type { Alliance, Role, Vec } from './constants';
 
@@ -112,3 +112,13 @@ export const crossCells = (k: number): Cell[] => {
   const [i, j] = CORNERS[k];
   return [cellAt(i, j)!, cellAt(i, j - 1)!, cellAt(i - 1, j)!, cellAt(i + 1, j)!, cellAt(i, j + 1)!];
 };
+
+// ---------- 座位（混沌迫近換位後，改坐別人的位置） ----------
+
+export interface Seated { al: Alliance; role: Role; seat?: { al: Alliance; role: Role } }
+/** 目前坐的座位：換位前就是自己 */
+export const seatOf = (e: Seated): { al: Alliance; role: Role } => e.seat ?? { al: e.al, role: e.role };
+export const zoneE = (e: Seated): Zone => { const s = seatOf(e); return zoneOf(s.al, s.role); };
+export const homeE = (e: Seated): Vec => { const s = seatOf(e); return p2Home(s.al, s.role); };
+/** 站位用的職能（外場的分攤、散開、塔都依座位的職能） */
+export const roleE = (e: Seated): Role => seatOf(e).role;

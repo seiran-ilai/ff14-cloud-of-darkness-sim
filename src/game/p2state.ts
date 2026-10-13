@@ -22,7 +22,14 @@ export interface SmallBoss {
   side: Side;
   /** 目前亮出的特效（判定前 tell 秒） */
   glow: TripleKind | null;
+  /** 跳躍波動炮：跳到的位置（沒有就在平臺中央） */
+  at?: Vec | null;
 }
+
+/** 暗之荊棘：位置、佔用的格子（外場 −1）、種子主人（實體索引） */
+export interface Thorn { x: number; y: number; cell: number; owner: number; since: number }
+/** 連線：荊棘叢生（從荊棘到人）或內場兩人互連（a、b 實體索引） */
+export interface Link { x?: number; y?: number; a: number; b?: number; until: number }
 
 /** 內場塔：cells 是格子索引；need = 需要的人數（單人 1、雙人 2，雙人塔橫跨 2 格） */
 export interface InnerTower { cells: number[]; need: number }
@@ -40,6 +47,14 @@ export interface P2State {
   reserve: Map<number, number>;
   /** 這段時間內 Bot 不去刷新格子（機制進行中） */
   busyUntil: number;
+  thorns: Thorn[];
+  links: Link[];
+  /** 恐懼之雲的特效（王身邊的環形／方形暗雲） */
+  fear: { kind: 'ring' | 'cross'; until: number } | null;
+  /** 雲散：小王消失 */
+  vanished: boolean;
+  /** 內場各角落目前生效的換格規劃編號（新的規劃開始，舊的就停） */
+  plan: number[];
 }
 
 export function createP2(): P2State {
@@ -47,10 +62,13 @@ export function createP2(): P2State {
     cells: CELLS.map(() => ({ who: -1, stand: 0, doomAt: null, goneUntil: null })),
     sb: [{ side: -1, glow: null }, { side: 1, glow: null }],
     innerTowers: [], outerTowers: [], bleedUntil: 0, reserve: new Map(), busyUntil: 0,
+    thorns: [], links: [], fear: null, vanished: false, plan: [0, 0, 0, 0],
   };
 }
 
 export const cellGone = (s: P2State, c: Cell): boolean => s.cells[c.idx].goneUntil !== null;
+/** 格子被荊棘佔用 */
+export const cellThorn = (s: P2State, c: Cell): boolean => s.thorns.some((t) => t.cell === c.idx);
 export const cellRed = (s: P2State, c: Cell): boolean => { const cs = s.cells[c.idx]; return cs.doomAt !== null || cs.stand >= P2.standRed; };
 
 /** P2 能站的地方：沒消失的格子、平臺、環狀地板（中心點判定） */
@@ -65,6 +83,8 @@ export function updateGrid(G: GameState, dt: number): void {
   const s = G.p2!;
   const on: number[][] = CELLS.map(() => []);
   G.ents.forEach((e, k) => { if (!e.dead) cellsTouching(e).forEach((c) => on[c.idx].push(k)); });
+  // 暗之荊棘佔用 1 格（算 1 人；放下後有一點寬限讓主人離開）
+  s.thorns.forEach((t) => { if (t.cell >= 0 && G.t >= t.since) on[t.cell].push(-1); });
   CELLS.forEach((c) => {
     const cs = s.cells[c.idx];
     if (cs.goneUntil !== null) {
@@ -73,7 +93,8 @@ export function updateGrid(G: GameState, dt: number): void {
     }
     const who = on[c.idx];
     if (who.length >= 2) { if (cs.doomAt === null) cs.doomAt = G.t + P2.crowdGone; }
-    else if (who.length === 1) { if (cs.who === who[0]) cs.stand += dt; else { cs.who = who[0]; cs.stand = dt; } }
+    // 只有荊棘：不計站立時間
+    else if (who.length === 1 && who[0] >= 0) { if (cs.who === who[0]) cs.stand += dt; else { cs.who = who[0]; cs.stand = dt; } }
     else { cs.who = -1; cs.stand = 0; }
     if ((cs.doomAt !== null && G.t >= cs.doomAt) || cs.stand >= P2.standGone) {
       cs.goneUntil = G.t + P2.regen;

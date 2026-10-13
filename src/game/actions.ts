@@ -1,4 +1,4 @@
-// 技能列：疾跑、防擊退、位移
+// 技能列：疾跑、防擊退、位移、插言（打斷）
 import { dirV } from '../core/geometry';
 import type { DashDir } from '../core/config';
 import { force, type GameState } from './state';
@@ -15,6 +15,7 @@ export function useAct(G: GameState, i: number): boolean {
   if ((G.cds[i] || 0) > G.t) return false;
   if (a.type === 'sprint') P.buffs.sprint = G.t + (+a.dur || 10);
   else if (a.type === 'akb') P.buffs.akb = G.t + (+a.dur || 6);
+  else if (a.type === 'interject') G.lastInterject = G.t;
   else if (a.type === 'dash') {
     if (P.forced) return false;
     const v = dirV(P.face + DASH_OFF[a.dir || 'fwd']);

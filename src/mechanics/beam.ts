@@ -12,7 +12,7 @@ import { BEAM } from '../core/tuning';
 import { beamDir } from '../core/positions';
 import { at, setCast, seqAdd, type BeamLine, type Entity, type Fix, type GameState } from '../game/state';
 import { good, bad, botHit } from '../game/results';
-import { claim, npcHome, isBot } from '../game/bots';
+import { claim, npcSettle, isBot } from '../game/bots';
 
 const ORDER: Role[] = ['MT', 'ST', 'H1', 'D1', 'H2', 'D2', 'D3', 'D4'];
 
@@ -30,13 +30,13 @@ export function beam(G: GameState, t0: number): number {
   const P = G.player;
   const fix = (): Fix => ({ ...beamSlot(P), r: 1.3, label: roleType(P.role) === 'tank' ? '坦克站最前' : '排在坦克後面' });
   at(G, t0, () => {
-    setCast(G, '連射式波動炮', BEAM.cast);
+    setCast(G, '連射式波動炮', BEAM.cast, '直線分攤四輪：坦克站最前、其他人排後面，別站到別聯盟的線');
     const tg = {} as Record<Alliance, Entity>;
     ALS.forEach((al) => { tg[al] = G.rng.pickOne(G.ents.filter((e) => e.al === al && roleType(e.role) !== 'tank')); });
     G.extra.beam = tg;
     G.ents.forEach((e) => {
       const p = beamSlot(e);
-      if (isBot(G, e)) e.mt = p;
+      if (isBot(G, e)) { e.mt = p; e.buffs.sprint = G.t + 4; }
       if (e.isPlayer) G.hints = [{ ...p, r: 1.3, label: roleType(e.role) === 'tank' ? '坦克站最前' : '排在坦克後面' }];
     });
   });
@@ -79,6 +79,6 @@ export function beam(G: GameState, t0: number): number {
       else { if (rk.every((r) => r.rank >= 2)) good(G, tag, '排在坦克後面', fix()); else bad(G, tag, '站到前兩位，吃到高額傷害', fix()); }
     }
   });
-  npcHome(G, t0 + 8.6, me);
+  npcSettle(G, t0 + 8.6, me);
   return t0 + 8.6;
 }

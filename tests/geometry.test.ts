@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { toUV, fromUV, inArena, angDiff, laneOf, edgeDist, dirV, angOf } from '../src/core/geometry';
-import { R, HALF, CELL } from '../src/core/constants';
+import { R, HALF, CELL, BOSS } from '../src/core/constants';
 
 describe('geometry', () => {
   it('toUV / fromUV 互逆', () => {
@@ -18,7 +18,10 @@ describe('geometry', () => {
   it('inArena 邊界', () => {
     expect(inArena(0, 0)).toBe(true);
     expect(inArena(R, 0)).toBe(true);
-    expect(inArena(0, -R)).toBe(true);
+    expect(inArena(0, R)).toBe(true);
+    // 王底下（北角那一段）沒有地板
+    expect(inArena(0, -R)).toBe(false);
+    expect(inArena(BOSS.x, BOSS.y)).toBe(false);
     expect(inArena(R / 2, R / 2)).toBe(true);
     expect(inArena(R + 0.01, 0)).toBe(false);
     expect(inArena(R / 2 + 0.01, R / 2)).toBe(false);

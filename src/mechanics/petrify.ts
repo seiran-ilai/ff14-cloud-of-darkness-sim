@@ -7,7 +7,8 @@
 import { BOSS, R, type Vec } from '../core/constants';
 import { angOf, angDiff } from '../core/geometry';
 import { DIRNAME } from '../core/format';
-import { PETRIFY } from '../core/tuning';
+import { PETRIFY, REACT } from '../core/tuning';
+import { homePos } from '../core/positions';
 import { at, setCast, say, seqAdd, type Entity, type GameState } from '../game/state';
 import { good, hurtPlayer, botHit } from '../game/results';
 import { npcs } from '../game/bots';
@@ -31,10 +32,12 @@ export function petrify(G: GameState, t0: number): number {
   const srcs = gazeSources(side);
   at(G, t0, () => {
     say(G, '變成沉默的石頭吧！', 3);
-    setCast(G, '超石化', PETRIFY.cast);
+    setCast(G, '超石化', PETRIFY.cast, '背對王與邪眼：面向沒有邪眼的那一側');
     G.extra.eyes = { side, until: t0 + PETRIFY.cast + 0.5 };
     G.hints = [{ x: -side * 6, y: 0, r: 0, label: `背對王與${side < 0 ? '西' : '東'}側邪眼` }];
   });
+  // 邪眼出現（預兆）後走到空曠處（原位），才轉身背對
+  at(G, t0 + REACT, () => npcs(G).forEach((e) => { if (!e.dead) e.mt = homePos(e.al, e.role); }));
   at(G, t0 + 3, () => npcs(G).forEach((e) => { e.faceLock = safeFace(e, srcs); }));
   at(G, t0 + PETRIFY.cast, () => {
     G.hints = [];

@@ -1,6 +1,6 @@
 # 暗黑之雲機制模擬器
 
-FF14「滅・暗黑之雲激鬥戰」的機制練習器：P1 魔法陣階段兩條時間軸與單一機制，以及 P2 華容道（製作中）。
+FF14「滅・暗黑之雲激鬥戰」的機制練習器：P1 開場、P2 魔法陣階段兩條時間軸與單一機制，以及 P3（製作中）。
 在網頁上用鍵盤滑鼠操作角色，有 23 名照攻略跑位的隊友，可看示範、慢動作回放失誤。
 
 **直接玩：** https://seiran-ilai.github.io/ff14-cloud-of-darkness-sim/
@@ -14,12 +14,12 @@ Vite + TypeScript（strict）+ Canvas 2D，沒有 UI 框架。
 | 用途 | 來源 |
 |---|---|
 | 機制效果、陰冷擁抱減益秒數、時間軸 | [FF14 灰機 wiki](https://ff14.huijiwiki.com/)（簡體中文，已轉繁體整理） |
-| 打法（イディル改）、P1／P2 站位與處理方式 | [FF14 繁中高難攻略 — 滅・暗黑之雲激鬥戰](https://cycleapple.github.io/xiv-tc-battle-guide/chaotic/cloud-of-darkness/)（cycleapple） |
-| P2 各座位站位（イディル改） | [滅・暗黑之雲小抄工具](https://cycleapple.github.io/xiv-tc-battle-guide/chaotic/cloud-of-darkness-cheatsheet/)（cycleapple） |
+| 打法（イディル改）、P2／P3 華容道站位與處理方式 | [FF14 繁中高難攻略 — 滅・暗黑之雲激鬥戰](https://cycleapple.github.io/xiv-tc-battle-guide/chaotic/cloud-of-darkness/)（cycleapple） |
+| P3 華容道各座位站位（イディル改） | [滅・暗黑之雲小抄工具](https://cycleapple.github.io/xiv-tc-battle-guide/chaotic/cloud-of-darkness-cheatsheet/)（cycleapple） |
 | イディル改打法原文 | イディルシャイア居住區（[@idyllshireinfo](https://x.com/idyllshireinfo)）；[kanatan 整理](http://kanatan.info/archives/38822195.html) |
 | 攻略頁參考資料 | [Game8](https://game8.jp/ff14)（日文）、Kitten ERP Guides（英文） |
 
-- 整理後的機制文件：[`docs/cod-mechanics.md`](docs/cod-mechanics.md)（P1）、[`docs/p2-strategy.md`](docs/p2-strategy.md)（P2）。打法以標「【攻略處理】」的內容為準。
+- 整理後的機制文件：[`docs/cod-mechanics.md`](docs/cod-mechanics.md)（P1、P2、P4）、[`docs/p2-strategy.md`](docs/p2-strategy.md)（P3 華容道）。打法以標「【攻略處理】」的內容為準。
 - **各技能詠唱秒數、AOE 大小、場地尺寸大多是估計值**（攻略與 wiki 都沒寫明），集中在 [`src/core/tuning.ts`](src/core/tuning.ts) 並標「估計」，主要用來練習順序、面向與反應。發現與實戰不符歡迎開 issue。
 - FINAL FANTASY XIV 及相關名稱為 SQUARE ENIX 的商標。本專案為玩家自製的非官方練習工具，與 SQUARE ENIX 無關。
 
@@ -55,9 +55,18 @@ tests/
 ## 截圖／除錯網址參數（只在 `npm run dev`）
 
 `/?drill=tl1&seed=7&t=40&auto=1&cam=follow` 會用示範模式直接快轉到 40 秒並停住。
-`drill` 可用 `tl1`、`tl2`、`embrace`、`volley`、`death`、`aero`、`blade`、`flareholy`、`petrify`、`beam`，以及 P2 的 `p2open`、`p2grid`。
+`drill` 可用 `tl1`、`tl2`、`embrace`、`volley`、`death`、`aero`、`blade`、`flareholy`、`petrify`、`beam`，以及 P3 華容道的 `p2open`、`p2grid`（程式裡沿用 p2 命名），P1 開場是 `opener`。
 
-## P2 華容道
+## 練習模式
+
+- **連續**：從選的階段一路打到最後（P1 開場 → P2 第一次魔法陣 → P3 華容道 → P4 第二次魔法陣，P4 用 P2 沒用到的時間軸，最後是暗之大泛濫強制團滅）。
+- **單一階段**：只打 P1～P4 其中一段。
+- **隨機**：從勾選的機制（全選 → 階段 → 單一機制）隨機出題，可選重複／不重複、1～5 分鐘；不同場地的機制會瞬間切換場地。
+- **錯誤**：錯誤即停／錯誤不停。
+
+網址參數 `drill` 也可以用 `run:cont:p1`、`run:one:p3`、`rand:r:3:p3fear,p3spin` 這種格式。
+
+## P3 華容道
 
 攻略整理在 `docs/p2-strategy.md`。場地與機制尺寸大多是從攻略示意圖推估的，集中在 `src/core/tuning.ts` 的 `P2`、`DOMAIN`、`TRIPLE`、`WAVEBALL`。
 場地幾何與攻略站位在 `src/core/p2.ts`，格子規則在 `src/game/p2state.ts`，內場 Bot 的格子導航與刷新在 `src/game/p2nav.ts`，機制在 `src/mechanics/p2/`。

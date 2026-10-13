@@ -1,10 +1,33 @@
 // 座標慣例：x 往東、y 往南（畫面座標）；角度 0 = 北，順時針為正。
 import { R, HALF, CELL, type Vec } from './constants';
+import { GEM_CUT, OPENER } from './tuning';
 
 export const dirV = (a: number): Vec => ({ x: Math.sin(a), y: -Math.cos(a) });
 export const angOf = (dx: number, dy: number): number => Math.atan2(dx, -dy);
 export const dist = (a: Vec, b: Vec): number => Math.hypot(a.x - b.x, a.y - b.y);
-export const inArena = (x: number, y: number): boolean => Math.abs(x) + Math.abs(y) <= R;
+/** P2 魔法陣：菱形北角切平（王底下沒有地板）；回傳離切線的距離（正＝在地板這側） */
+export const voidDist = (_x: number, y: number): number => y - GEM_CUT;
+export const inVoid = (x: number, y: number): boolean => voidDist(x, y) < 0;
+/** P2 魔法陣（北角切平的菱形）上有沒有地板 */
+export const inArena = (x: number, y: number): boolean => Math.abs(x) + Math.abs(y) <= R && !inVoid(x, y);
+/** P1 開場圓形場地 */
+export const inRound = (x: number, y: number): boolean => Math.hypot(x, y) <= OPENER.roundR;
+/** 腳下有沒有地板：round＝P1 開場圓形場地，否則 P2 魔法陣 */
+export const onP1Floor = (p: Vec, round?: boolean): boolean => (round ? inRound(p.x, p.y) : inArena(p.x, p.y));
+/** Bot 目標在王底下沒地板處：推回切線南側 margin 處（切線是直線，兩端都在地板上的路徑不會經過） */
+export function aroundVoid(_p: Vec, tg: Vec, margin = 0.8): Vec {
+  return voidDist(tg.x, tg.y) < margin ? { x: tg.x, y: GEM_CUT + margin + 0.2 } : tg;
+}
+
+/** 把掉出場地的點夾回場內（離邊 1 m） */
+export function clampP1(p: Vec, round?: boolean): Vec {
+  if (round) { const k = Math.min(1, (OPENER.roundR - 1) / (Math.hypot(p.x, p.y) || 1)); return { x: p.x * k, y: p.y * k }; }
+  let { x, y } = p;
+  if (inVoid(x, y)) y = GEM_CUT + 1;
+  const s = Math.abs(x) + Math.abs(y);
+  if (s > R - 1) { const k = (R - 1) / s; x *= k; y *= k; }
+  return { x, y };
+}
 /** 到菱形邊緣的垂直距離（場外為負） */
 export const edgeDist = (p: Vec): number => (R - (Math.abs(p.x) + Math.abs(p.y))) / Math.SQRT2;
 /** 兩角度差的絕對值，0～π */

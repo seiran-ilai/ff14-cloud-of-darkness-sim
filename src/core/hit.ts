@@ -33,3 +33,25 @@ export function hitHalf(p: Vec, c: Vec, r: number, a: number, hb = HIT): boolean
 
 /** 沿直線帶的前後位置（給排序用） */
 export const along = (p: Vec, O: Vec, v: Vec): number => (p.x - O.x) * v.x + (p.y - O.y) * v.y;
+
+/** 判定圈碰到環形（甜甜圈）AOE：r0～r1 之間 */
+export function hitRing(p: Vec, c: Vec, r0: number, r1: number, hb = HIT): boolean {
+  const d = Math.hypot(p.x - c.x, p.y - c.y);
+  return d >= r0 - hb && d <= r1 + hb;
+}
+
+/** 判定圈碰到扇形：中心 c、半徑 r、朝角度 a、半張角 w（弧度；判定圈用角度近似放寬） */
+export function hitFan(p: Vec, c: Vec, r: number, a: number, w: number, hb = HIT): boolean {
+  const dx = p.x - c.x, dy = p.y - c.y, d = Math.hypot(dx, dy);
+  if (d > r + hb) return false;
+  if (d <= hb) return true;
+  const ang = Math.atan2(dx, -dy);
+  const diff = Math.abs(((((ang - a) % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI)) - Math.PI);
+  return diff <= w + Math.asin(Math.min(1, hb / d));
+}
+
+/** 判定圈碰到通過 c、角度 a 的無限長直線（前後兩端都打），半寬 halfW */
+export function hitLine(p: Vec, c: Vec, a: number, halfW: number, hb = HIT): boolean {
+  const v = dirV(a), dx = p.x - c.x, dy = p.y - c.y;
+  return Math.abs(dx * v.y - dy * v.x) <= halfW + hb;
+}
