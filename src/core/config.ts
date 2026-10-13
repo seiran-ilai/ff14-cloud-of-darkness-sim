@@ -40,6 +40,8 @@ export interface Config {
   zoom: 'near' | 'mid' | 'far';
   /** 大遊戲畫面：舞台佔滿整個寬度，說明欄移到下面 */
   big: boolean;
+  /** 收起兩側的說明欄：遊戲畫面變大 */
+  hideSides: boolean;
   sound: boolean;
   acts: ActionConfig[];
   al: Alliance;
@@ -64,7 +66,7 @@ export const DEFAULT_ACTS: readonly ActionConfig[] = [
 export const cloneActs = (a: readonly ActionConfig[]): ActionConfig[] => JSON.parse(JSON.stringify(a));
 
 export function defaultConfig(): Config {
-  return { auto: true, speed: 1, hint: true, text: true, tele: true, failMode: 'stop', dur: 14, cdReset: true, cam: 'fixed', zoom: 'mid', big: false, sound: true, acts: cloneActs(DEFAULT_ACTS), al: 'A', role: 'D3', drill: 'run:one:p1', pick: 'one', rand: { repeat: true, mins: 3, ids: [] } };
+  return { auto: true, speed: 1, hint: true, text: true, tele: true, failMode: 'stop', dur: 14, cdReset: true, cam: 'fixed', zoom: 'mid', big: false, hideSides: false, sound: true, acts: cloneActs(DEFAULT_ACTS), al: 'A', role: 'D3', drill: 'run:one:p1', pick: 'one', rand: { repeat: true, mins: 3, ids: [] } };
 }
 
 /** 舊設定沒有插言（P3 打斷小王用）：補在最後 */
@@ -88,6 +90,7 @@ export function loadConfig(): Config {
     cam: store.get('cam', d.cam),
     zoom: store.get('zoom', d.zoom),
     big: store.get('big', d.big),
+    hideSides: store.get('hideSides', d.hideSides),
     sound: store.get('sound', d.sound),
     acts: withInterject(store.get<ActionConfig[] | null>('acts', null) || d.acts),
     al: store.get('al', d.al),

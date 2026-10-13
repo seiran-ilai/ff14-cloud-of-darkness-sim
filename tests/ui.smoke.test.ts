@@ -86,6 +86,15 @@ describe('UI 冒煙測試', () => {
     expect(document.querySelectorAll('#ov .checks li').length).toBeGreaterThan(0);
   });
 
+  it('收起／顯示側欄', () => {
+    const b = document.getElementById('toggleSides') as HTMLButtonElement;
+    b.click();
+    expect(document.body.classList.contains('nosides')).toBe(true);
+    expect(b.textContent).toBe('顯示側欄');
+    b.click();
+    expect(document.body.classList.contains('nosides')).toBe(false);
+  });
+
   it('點判定可回放，Esc 回到結算', () => {
     (document.querySelector('#ov [data-ck="0"]') as HTMLButtonElement).click();
     expect(document.getElementById('rp')!.hidden).toBe(false);

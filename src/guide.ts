@@ -68,11 +68,10 @@ function sectionHtml(k: string): string {
     <div class="ghead"><h2>${D.name}</h2><span class="muted">${D.sub}</span><span class="gwhy muted"></span></div>
     <div class="gcols">
       <div class="gplayer">
-        <div class="gview">
+        <div class="gstage" title="點畫面暫停／播放"><canvas class="gcv"></canvas>
           <div class="gtop"><div class="gcap"></div><span class="gtime"></span></div>
-          <div class="gstage" title="點畫面暫停／播放"><canvas class="gcv"></canvas><div class="gidle">捲到這一段就會播放</div></div>
           <div class="gbot"><span class="galert"></span></div>
-        </div>
+          <div class="gidle">捲到這一段就會播放</div></div>
         <div class="gctrl">
           <button class="btn sm" data-a="play">暫停</button>
           <button class="btn ghost sm" data-a="re">重播</button>
@@ -113,7 +112,8 @@ function jump(k: string): void {
 }
 
 /**
- * 動態圖上下的文字列（不疊在場地上）：上方＝詠唱名稱／讀條／處理方式與時間，下方＝王台詞與提示。
+ * 動態圖裡的文字（畫面比場地高，場地上下各留一段空白，文字放在空白處，不蓋到場地）：
+ * 上方＝詠唱名稱／讀條／處理方式與時間，下方＝王台詞與提示。
  * 只有內容變了才改 DOM。
  */
 const lastHtml = new Map<HTMLElement, string>();
@@ -125,7 +125,7 @@ function updCaption(): void {
   const c = G.cast && G.state === 'run' && G.t < G.cast.start + G.cast.dur ? G.cast : null;
   put(q(active, 'gcap'), c
     ? `<div class="gcast"><b>${c.name}</b><span>${Math.max(0, c.start + c.dur - G.t).toFixed(1)}</span></div><i class="gprog"><i style="width:${((G.t - c.start) / c.dur) * 100}%"></i></i>${c.tip ? `<em>${c.tip}</em>` : ''}`
-    : '<span class="muted">（目前沒有詠唱）</span>');
+    : '');
   const line = G.line && G.t < G.line.until ? G.line.text : '';
   const al = G.alert && G.t < G.alert.until ? G.alert.text : '';
   put(q(active, 'galert'), [line && `<span class="gline"><small>暗黑之雲</small>${line}</span>`, al && `<b>${al}</b>`].filter(Boolean).join(''));

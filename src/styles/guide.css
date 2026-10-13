@@ -17,13 +17,15 @@
 .ghead{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
 .ghead h2{margin:0;font-family:var(--f-display);font-size:21px}
 .gwhy{color:var(--gold-2)}
-.gcols{display:grid;grid-template-columns:minmax(0,520px) minmax(0,1fr);gap:16px;align-items:start}
+.gcols{display:grid;grid-template-columns:minmax(0,480px) minmax(0,1fr);gap:16px;align-items:start}
 .gplayer{display:flex;flex-direction:column;gap:8px}
-/* 動態圖：上方文字列（詠唱／讀條／處理方式）＋場地＋下方文字列（王台詞／提示）。文字列固定高度、不疊在場地上 */
-.gview{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#0a0812}
-.gtop{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:start;height:92px;overflow:hidden;padding:8px 10px;border-bottom:1px solid var(--line)}
-.gbot{height:58px;overflow:hidden;padding:6px 10px;border-top:1px solid var(--line);display:flex;align-items:center}
-.gstage{position:relative;width:100%;aspect-ratio:1/1;background:#06050b;cursor:pointer}
+/*
+ * 動態圖：畫面 4:5（比場地高）。鏡頭以寬度決定比例尺，所以場地上方（王的北邊）約 28%、下方約 11% 是空白，
+ * 詠唱／讀條／處理方式放上方空白、王台詞／提示放下方空白，不蓋到場地。
+ */
+.gstage{position:relative;width:100%;aspect-ratio:4/5;background:#06050b;cursor:pointer;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.gtop{position:absolute;top:0;left:0;right:0;height:26%;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:start;overflow:hidden;padding:10px 12px;pointer-events:none;text-shadow:0 1px 3px #000,0 0 6px #000}
+.gbot{position:absolute;bottom:0;left:0;right:0;height:10%;overflow:hidden;padding:4px 12px;display:flex;align-items:center;justify-content:center;text-align:center;pointer-events:none;text-shadow:0 1px 3px #000,0 0 6px #000}
 .gstage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .gidle{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:14px;background:#06050b}
 .gsec.playing .gidle{display:none}

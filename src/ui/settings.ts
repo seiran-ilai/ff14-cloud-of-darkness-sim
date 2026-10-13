@@ -8,9 +8,12 @@ import { resize } from '../render/canvas';
 const TYPE_NAME: Record<ActType, string> = { sprint: '疾跑（加速）', akb: '防擊退', dash: '位移', interject: '插言（打斷）' };
 const DIRS: [string, string][] = [['fwd', '前'], ['back', '後'], ['left', '左'], ['right', '右']];
 
-/** 大遊戲畫面：舞台佔滿寬度（說明欄移到下面），換完重算 canvas 大小 */
+/** 大遊戲畫面（說明欄移到下面）、收起側欄：換 body class，換完重算 canvas 大小 */
 export function applyBig(cfg: Config): void {
   document.body.classList.toggle('bigstage', cfg.big);
+  document.body.classList.toggle('nosides', cfg.hideSides);
+  const b = document.getElementById('toggleSides');
+  if (b) b.textContent = cfg.hideSides ? '顯示側欄' : '收起側欄';
   resize();
 }
 

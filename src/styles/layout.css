@@ -41,6 +41,13 @@ a.btn{text-decoration:none;display:inline-block}
 /* 大遊戲畫面（設定）：舞台佔滿寬度、兩個側欄移到下面 */
 body.bigstage:not(.mobile) .main{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"sc sc" "sl sr"}
 body.bigstage:not(.mobile) .stage{max-width:min(1100px,max(440px,calc(100vh - 130px)))}
+/* 收起側欄（上方按鈕）：只留遊戲畫面，畫面變大 */
+body.nosides:not(.mobile) .main{grid-template-columns:minmax(0,1fr);grid-template-areas:"sc"}
+body.nosides:not(.mobile) .main .sl,body.nosides:not(.mobile) .main .sr{display:none}
+body.nosides:not(.mobile) .stage{max-width:min(1100px,max(440px,calc(100vh - 130px)))}
+/* 側欄收起時機制提示卡看不到：詠唱提示與王台詞照樣顯示在遊戲畫面上 */
+body.nosides:not(.mobile) .casttip{display:block}
+body.nosides:not(.mobile) .bossline{display:flex}
 @media (max-width:720px){.main{grid-template-columns:minmax(0,1fr);grid-template-areas:"sc" "sr" "sl"}}
 /* 機制提示卡（右欄最上面）：固定高度、內容在卡片裡捲動，出現提示時不會把下面的卡片擠下去 */
 .tipcard{height:240px;overflow-y:auto}
