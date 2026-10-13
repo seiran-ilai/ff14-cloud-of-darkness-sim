@@ -19,6 +19,8 @@ import { spin, jump } from '../mechanics/p2/spin';
 import { swap, dive, impale, vanish } from '../mechanics/p2/swap';
 import { deluge } from '../mechanics/deluge';
 import { allSettle } from '../mechanics/p2/common';
+import { flowHtml } from './mechinfo';
+import { P3 } from '../core/tuning';
 
 /**
  * P3 華容道開場：暗之大泛濫進 P3 → 深暗領域 → 三重暗之戰技＋波動球。
@@ -70,9 +72,10 @@ export function p3Seg(G: GameState, t0: number): number {
   const g = f + 10;
   impale(G, g);
   const h = g + 6;
-  spin(G, h);
-  jump(G, h + 4);
-  const i = h + 14;
+  const spinEnd = spin(G, h);
+  // 外場的跳躍波動炮和迴旋式的第一擊差不多同時
+  jump(G, h + P3.spin.cast - 1);
+  const i = spinEnd + 3.4;
   swap(G, i);
   const j = i + 9;
   const jEnd = jump(G, j + 1);
@@ -95,14 +98,12 @@ export function p3Seg(G: GameState, t0: number): number {
   return deluge(G, p + 6, false);
 }
 
-export const P3_BRIEF = '暗之大泛濫詠唱時先跑到 P3 華容道的站位（綠圈），場地變化時腳下沒有地板會掉下去。'
-  + '內場 12 人（B 隊伍＋A/C 的 ST、H1）、西平臺 A、東平臺 C。深暗領域後環狀地板會出血，留在平臺或格子上。'
-  + '小王的三重暗之戰技：詠唱中依序亮出三個球（要記住順序），詠唱完才照順序放招；順序一定是「單手 → 單手／雙手／黑霧 → 單手／雙手／黑霧」：單手球躲到沒球那半邊；雙手球 MT＋H2、D1＋D3、D2＋D4 分攤；黑霧照相對方向散開。'
-  + '內場 B 隊伍 H1/H2/D1/D2 站在格子內偏本體側。三擊結束後踩波動球的塔：內場踩自己角落的塔格，外場 MT/D1/D3 踩 12／9 點、H2/D2/D4 踩 6／3 點。'
-  + '<br>之後依序：恐懼之雲（環形＝內場站靠王的格子、外場平臺外側；十字＝外場到環狀地板斜角）→ 波動詛咒（結束時朝不會打到人的方向）'
-  + ' → 種子彈（外場放平臺 3／9 點、內場放面向平臺的直條中段，放完立刻離開）→ 恐懼之雲 → 荊棘叢生（外場 H2/D2 拉北、D3/D4 拉南；內場兩人跑到橫條兩端）＋小王暗之泛濫（外場 MT 插言）'
-  + ' → 凝聚式／分散式 → 磔殺 → 迴旋式（內場一格一格往前補）＋跳躍波動炮 → 混沌迫近換位 → 波動球 2 回＋波動詛咒 2 回 → 潛地式（被點的人順時針跑一圈）'
-  + ' → 恐懼之雲 → 跳躍波動炮 → 分散式／凝聚式（和第一次相反）→ 小王暗之泛濫 → 雲散 → 暗之泛濫。';
+export const P3_BRIEF = '<ul class="bpts"><li>分組：內場 12 人（B 隊伍＋A／C 的 ST、H1）、西平臺 A、東平臺 C。</li>'
+  + '<li>內場每格只能站 1 人，連續站 45 秒會消失：平時在自己的區域換格刷新。</li>'
+  + '<li>暗之大泛濫詠唱時先跑到華容道站位（綠圈），腳下沒地板會掉下去。</li></ul>'
+  + flowHtml(['深暗領域', '三重暗之戰技＋波動球（踩塔）', '恐懼之雲', '波動詛咒', '種子彈 → 恐懼之雲', '荊棘叢生＋小王暗之泛濫（插言）',
+    '凝聚式／分散式波動炮', '磔殺', '迴旋式＋跳躍波動炮', '混沌迫近（換位）', '波動球 2 回＋波動詛咒 2 回', '潛地式波動炮＋三重暗之戰技',
+    '恐懼之雲 → 跳躍波動炮', '分散式／凝聚式（和第一次相反）', '小王暗之泛濫 → 雲散 → 暗之泛濫']);
 
 /** 格子自由練習的長度（秒）：超過 45 秒，一定要刷新 */
 const GRID_SECS = 70;
@@ -113,6 +114,7 @@ export const p2: Record<string, Drill> = {
     name: 'P3 華容道 開場',
     sub: '深暗領域 → 戰技＋塔',
     brief: P3_BRIEF,
+    info: ['暗之大泛濫', '深暗領域', '三重暗之戰技', '波動球'],
     setup(G) {
       const end = p3Open(G, 1);
       at(G, end + 1.5, () => { G.endT = G.t; });
@@ -122,9 +124,10 @@ export const p2: Record<string, Drill> = {
     group: 'p2',
     name: '格子刷新',
     sub: `內場自由練習 ${GRID_SECS} 秒`,
-    brief: '內場每格只能站 1 人：連續站 40 秒變紅、45 秒消失；兩人以上碰到同一格會在 1 秒後消失；離開格子站立時間就刷新。'
-      + '判定圈碰到格子就算站在上面，所以換格時不要貼到別人的格子。平時就在自己的區域換格刷新（只是刷新時不要進交叉格）。'
-      + '外場座位沒有格子，請選 B 隊伍、或 A／C 隊伍的 ST、H1 練習。',
+    brief: '<ul class="bpts"><li>每格只能站 1 人：連續站 <b>40 秒變紅、45 秒消失</b>；離開格子站立時間就刷新。</li>'
+      + '<li>兩人以上碰到同一格，1 秒後消失。判定圈碰到格子就算站在上面，換格時不要貼到別人的格子。</li>'
+      + '<li>平時在自己的區域換格刷新（刷新時不要進交叉格）。</li>'
+      + '<li>外場座位沒有格子：請選 B 隊伍、或 A／C 隊伍的 ST、H1。</li></ul>',
     setup(G) {
       enterP2(G);
       seqAdd(G, 0, '格子刷新練習');

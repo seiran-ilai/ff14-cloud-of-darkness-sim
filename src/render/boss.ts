@@ -105,9 +105,11 @@ export function drawOrbAndEyes(c: CanvasRenderingContext2D, G: GameState): void 
     const s = G.extra.eyes.side;
     [-4.5, 4.5].forEach((y) => {
       const x = s * (R + 2.5);
-      c.fillStyle = '#2a0d16'; circle(c, x, y, 1.6); c.fill();
-      c.strokeStyle = '#ff5d6c'; c.lineWidth = px(2); c.stroke();
-      c.fillStyle = '#ff5d6c'; circle(c, x, y, 0.6); c.fill();
+      c.fillStyle = `rgba(255,93,108,${0.25 + 0.15 * Math.sin(G.t * 6)})`; circle(c, x, y, 3.2); c.fill();
+      c.fillStyle = '#2a0d16'; circle(c, x, y, 2.2); c.fill();
+      c.strokeStyle = '#ff5d6c'; c.lineWidth = px(3); c.stroke();
+      c.fillStyle = '#ff5d6c'; circle(c, x, y, 0.9); c.fill();
     });
+    text(c, '邪眼', s * (R + 2.5), 0, 13, '#ff9aa4');
   }
 }

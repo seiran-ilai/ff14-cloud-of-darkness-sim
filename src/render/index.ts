@@ -1,7 +1,7 @@
 // 繪製一幀（只讀狀態）。alpha 為固定步長之間的插值比例。
 import type { Config } from '../core/config';
 import type { EmbraceType, Fix, RenderState } from '../game/state';
-import { BOSS } from '../core/constants';
+import { BOSS, R, type Vec } from '../core/constants';
 import { dirV } from '../core/geometry';
 import { view, px, text, circle, setCamera, worldTransform, lerp } from './canvas';
 import { drawArena } from './arena';
@@ -26,7 +26,7 @@ export function draw(G: RenderState | null, cfg: Config, opts: DrawOpts = {}): v
   const alpha = opts.alpha ?? 1;
   const c = view.ctx, cv = view.cv;
   const P = G.player;
-  setCamera(cfg.cam, { x: lerp(P.px, P.x, alpha), y: lerp(P.py, P.y, alpha) });
+  setCamera(cfg.cam, { x: lerp(P.px, P.x, alpha), y: lerp(P.py, P.y, alpha) }, cfg.zoom);
   c.setTransform(1, 0, 0, 1, 0, 0);
   c.fillStyle = '#05040a';
   c.fillRect(0, 0, cv.width, cv.height);
@@ -73,6 +73,28 @@ export function draw(G: RenderState | null, cfg: Config, opts: DrawOpts = {}): v
   // 跟隨鏡頭時王可能在畫面外：右上角小窗顯示王的手勢
   const pose = activePose(G);
   if (pose && cfg.cam === 'follow') drawPoseInset(c, pose, cfg);
+  // 場外的邪眼在畫面外：畫面邊緣畫箭頭指過去
+  if (!G.p2 && G.extra.eyes && G.t < G.extra.eyes.until) edgeMarker(c, { x: G.extra.eyes.side * (R + 2.5), y: 0 }, '邪眼');
+}
+
+/** 世界座標的點在畫面外時，在畫面邊緣畫紅色箭頭與名稱 */
+function edgeMarker(c: CanvasRenderingContext2D, p: Vec, label: string): void {
+  const cv = view.cv, D = view.DPR, m = 34 * D;
+  const sx = cv.width / 2 + (p.x - view.cx) * view.SCALE, sy = cv.height / 2 + (p.y - view.cy) * view.SCALE;
+  if (sx >= 0 && sx <= cv.width && sy >= 0 && sy <= cv.height) return;
+  const x = Math.min(cv.width - m, Math.max(m, sx)), y = Math.min(cv.height - m, Math.max(m, sy));
+  const a = Math.atan2(sy - y, sx - x);
+  c.setTransform(1, 0, 0, 1, 0, 0);
+  c.save();
+  c.translate(x, y); c.rotate(a);
+  c.fillStyle = '#ff5d6c';
+  c.beginPath(); c.moveTo(22 * D, 0); c.lineTo(4 * D, -11 * D); c.lineTo(4 * D, 11 * D); c.closePath(); c.fill();
+  c.restore();
+  c.font = `900 ${14 * D}px "Noto Sans TC","Microsoft JhengHei",sans-serif`;
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.lineWidth = 4 * D; c.strokeStyle = 'rgba(0,0,0,.85)';
+  const lx = x - Math.cos(a) * 18 * D, ly = y - Math.sin(a) * 18 * D;
+  c.strokeText(label, lx, ly); c.fillStyle = '#ff9aa4'; c.fillText(label, lx, ly);
 }
 
 function drawPoseInset(c: CanvasRenderingContext2D, pose: EmbraceType, cfg: Config): void {

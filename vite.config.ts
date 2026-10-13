@@ -1,7 +1,17 @@
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   base: './',
+  build: {
+    // 兩個頁面：模擬器（index.html）與機制教學（guide.html）
+    rollupOptions: {
+      input: {
+        main: fileURLToPath(new URL('./index.html', import.meta.url)),
+        guide: fileURLToPath(new URL('./guide.html', import.meta.url)),
+      },
+    },
+  },
   test: {
     include: ['tests/**/*.test.ts'],
     testTimeout: 120_000,

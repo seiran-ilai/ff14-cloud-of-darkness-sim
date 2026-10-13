@@ -9,7 +9,7 @@ export interface CellState {
   who: number;
   /** 這個人已經連續站了幾秒 */
   stand: number;
-  /** 2 人以上：在這個時間消失 */
+  /** 2 人以上：在這個時間消失（擠在一起的人在這之前散開就取消） */
   doomAt: number | null;
   /** 消失中：到這個時間重生 */
   goneUntil: number | null;
@@ -51,6 +51,8 @@ export interface P2State {
   links: Link[];
   /** 恐懼之雲的特效（王身邊的環形／方形暗雲） */
   fear: { kind: 'ring' | 'cross'; until: number } | null;
+  /** 王身上的預兆特效：凝聚式＝橙黃色蓄能、分散式＝紫黑色懸浮球、迴旋式＝面向與旋轉方向 */
+  aura: { kind: 'charge' | 'spread' | 'spin'; face?: number; dir?: number; until: number } | null;
   /** 雲散：小王消失 */
   vanished: boolean;
   /** 內場各角落目前生效的換格規劃編號（新的規劃開始，舊的就停） */
@@ -62,7 +64,7 @@ export function createP2(): P2State {
     cells: CELLS.map(() => ({ who: -1, stand: 0, doomAt: null, goneUntil: null })),
     sb: [{ side: -1, glow: null }, { side: 1, glow: null }],
     innerTowers: [], outerTowers: [], bleedUntil: 0, reserve: new Map(), busyUntil: 0,
-    thorns: [], links: [], fear: null, vanished: false, plan: [0, 0, 0, 0],
+    thorns: [], links: [], fear: null, aura: null, vanished: false, plan: [0, 0, 0, 0],
   };
 }
 
@@ -92,10 +94,14 @@ export function updateGrid(G: GameState, dt: number): void {
       return;
     }
     const who = on[c.idx];
+    // 2 人以上：連續擠 crowdGone 秒才消失；稍微踩到 0.幾秒就離開，來得及修正（測試回饋）
     if (who.length >= 2) { if (cs.doomAt === null) cs.doomAt = G.t + P2.crowdGone; }
-    // 只有荊棘：不計站立時間
-    else if (who.length === 1 && who[0] >= 0) { if (cs.who === who[0]) cs.stand += dt; else { cs.who = who[0]; cs.stand = dt; } }
-    else { cs.who = -1; cs.stand = 0; }
+    else {
+      cs.doomAt = null;
+      // 只有荊棘：不計站立時間
+      if (who.length === 1 && who[0] >= 0) { if (cs.who === who[0]) cs.stand += dt; else { cs.who = who[0]; cs.stand = dt; } }
+      else { cs.who = -1; cs.stand = 0; }
+    }
     if ((cs.doomAt !== null && G.t >= cs.doomAt) || cs.stand >= P2.standGone) {
       cs.goneUntil = G.t + P2.regen;
       cs.doomAt = null;

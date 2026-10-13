@@ -3,6 +3,8 @@
 import type { Drill } from '../game/state';
 import { at, seqAdd } from '../game/state';
 import { CATALOG, catalogById, setField, type Field } from './catalog';
+import { singles } from './singles';
+import { P3_INFO } from './p3singles';
 
 export const RAND_PREFIX = 'rand:';
 
@@ -27,7 +29,8 @@ export function makeRandDrill(o: RandOpts): Drill {
     name: `隨機練習・${o.mins} 分鐘`,
     sub: `${o.repeat ? '可重複' : '不重複'}・${o.ids.length} 種機制`,
     brief: `從選的機制隨機抽、一個接一個出（${o.repeat ? '可以重複' : '不重複，用完就提前結束'}），練換機制時的快速反應；不同場地的機制會瞬間切換場地。`
-      + `<br>機制：${names.join('、')}`,
+      + `<p class="bnote">${names.length} 種機制：${names.join('、')}</p>`,
+    info: [...new Set(o.ids.flatMap((id) => (id === 'p1blade' ? ['暗之刃'] : singles[id]?.info ?? P3_INFO[id]?.info ?? [])))],
     setup(G) {
       const limit = o.mins * 60;
       let t = 1, field: Field | null = null, last = '';

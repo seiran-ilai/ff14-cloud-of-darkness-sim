@@ -12,6 +12,7 @@ import { petrify } from '../mechanics/petrify';
 import { aero } from '../mechanics/aero';
 import { death } from '../mechanics/death';
 import { beam } from '../mechanics/beam';
+import { flowHtml } from './mechinfo';
 
 export interface SingleDrill extends Drill {
   /** 從 t0 開始排一次這個機制，回傳可以接下一段的時間 */
@@ -30,11 +31,9 @@ export const singles: Record<string, SingleDrill> = {
   embrace: {
     name: '陰冷擁抱',
     sub: '面向與外周處理',
-    brief: '<b>上減益（詠唱）時</b>看王的手勢並記住，王放招時不會再擺：'
-      + '<b>🫳 右手心向下（撒鹽）・左手在身前</b> → 手出現在你前方，<b>面向場內直走</b>。'
-      + '<b>🤌 右手心向上（義大利手勢）・左手在身後</b> → 手出現在你後方，減益結束時<b>面向場外</b>，手確實出現後再轉身往場內疾跑（太早轉身手會出在移動方向）。'
-      + '剩 1 秒會被加重；到外周處理讓手朝場外打，建議開疾跑。',
+    brief: '單練只有你這一批的減益，長度可以在「設定」改。',
     mechs: ['陰冷擁抱'],
+    info: ['陰冷擁抱'],
     seg(G, t0) {
       const d = G.cfg.dur;
       embraceCast(G, t0, [d, d + 8], { withPlayer: true });
@@ -46,29 +45,33 @@ export const singles: Record<string, SingleDrill> = {
   volley: single({
     name: '齊射式波動炮',
     sub: '四輪交替直線',
-    brief: '兩組雲各負責一個方向的直線，四輪交替。站在第一批與第二批發光雲的交會點旁，第一批炸完踩進它的線，第二批炸完再踩進交會點，就能躲過後兩輪。',
+    brief: '「設定」可以打開地面預兆，先看清楚每一輪打哪裡。',
     mechs: ['齊射式波動炮'],
+    info: ['齊射式波動炮'],
     seg: (G, t0) => volley(G, t0 + 0.5) + 0.8,
   }, 1.5, 0.5),
   death: single({
     name: '極死',
     sub: '吸引 → 圓形 → 環形',
-    brief: '詠唱時先到東或西端點，被吸到中央附近後先停住；中央圓炸完立刻進中央躲環形。可用防擊退抵銷吸引，但就要站近一點。',
+    brief: '',
     mechs: ['極死'],
+    info: ['極死'],
     seg: (G, t0) => death(G, t0, 7),
   }, 1, 0.8),
   aero: single({
     name: '飆風',
     sub: '中央擊退・藍圈',
-    brief: '站在藍圈外、正東或正西方向，往東西被擊退距離最長；往斜邊飛容易掉下去。也可以開防擊退。',
+    brief: '',
     mechs: ['飆風'],
+    info: ['飆風'],
     seg: (G, t0) => aero(G, t0, 7),
   }, 1, 1.3),
   blade: single({
     name: '暗之刃＋超賦',
     sub: '刃 → 無讀條飆風／極死',
-    brief: '單手：安全區在沒舉手那側的王前方。雙手：離開王身邊。超賦後的暗之刃一定是單手，炸完立刻接無讀條的飆風或極死，攻略建議這時開防擊退。',
+    brief: flowHtml(['暗之刃（單手或雙手）', '超賦風／超賦死（存進刀裡）', '暗之刃（一定單手）＋立刻無讀條的飆風／極死']),
     mechs: ['暗之刃', '飆風', '極死'],
+    info: ['暗之刃', '超賦', '飆風', '極死'],
     seg(G, t0) {
       const { rng } = G;
       const k: StoredKind = rng.chance(0.5) ? 'aero' : 'death';
@@ -83,22 +86,25 @@ export const singles: Record<string, SingleDrill> = {
   flareholy: single({
     name: '核爆＋神聖',
     sub: 'A 西・B 南・C 東',
-    brief: '核爆：大團到最上面（北邊王前）集合；被點的人去另外三個角落，A 西、B 南、C 東。黑暗神聖：6 處分攤，A／B／C 由西到東，前排 MT 組、後排 ST 組。',
+    brief: flowHtml(['核爆（每隊伍點 1 人）', '黑暗神聖（6 處分攤）']),
     mechs: ['核爆', '黑暗神聖'],
+    info: ['核爆', '黑暗神聖'],
     seg(G, t0) { flare(G, t0); return holy(G, t0 + 6); },
   }, 1, 0.5),
   petrify: single({
     name: '超石化',
     sub: '背對王與邪眼',
-    brief: '場外東或西出現兩個邪眼，判定時面向王或邪眼會石化 9 秒。面向沒有邪眼的那一側（東或西）即可。',
+    brief: '',
     mechs: ['超石化'],
+    info: ['超石化'],
     seg: (G, t0) => petrify(G, t0) + 1.5,
   }, 1, 0),
   beam: single({
     name: '連射式波動炮',
     sub: '直線分攤四輪',
-    brief: '每隊伍點 1 名非坦克，直線分攤四輪，最前面兩人傷害較高。坦克站最前、其他人排在後面，別站到別隊伍的線上。',
+    brief: '',
     mechs: ['連射式波動炮'],
+    info: ['連射式波動炮'],
     seg: (G, t0) => beam(G, t0) + 0.9,
   }, 1, 0),
 };

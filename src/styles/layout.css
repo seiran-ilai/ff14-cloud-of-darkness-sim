@@ -14,6 +14,7 @@ h1 .beta{font-family:var(--f-body);font-size:12px;font-weight:700;vertical-align
 .btn{font:inherit;font-weight:700;border-radius:9px;padding:8px 14px;cursor:pointer;border:1px solid var(--gold);background:var(--gold);color:#1c1406}
 .btn.ghost{background:transparent;color:var(--fg);border-color:var(--line)}
 .btn.sm{padding:4px 10px;font-size:13px}
+a.btn{text-decoration:none;display:inline-block}
 .drillrows{display:flex;flex-direction:column;gap:8px;padding-bottom:14px;border-bottom:1px solid var(--line)}
 .drills{display:grid;grid-template-columns:104px minmax(0,1fr);gap:8px;align-items:start}
 .drills .lbl{padding-top:8px}
@@ -37,7 +38,14 @@ h1 .beta{font-family:var(--f-body);font-size:12px;font-weight:700;vertical-align
 .main{display:grid;grid-template-columns:280px minmax(0,1fr) 300px;grid-template-areas:"sl sc sr";gap:16px;align-items:start}
 .main .sl{grid-area:sl}.main .sc{grid-area:sc;min-width:0}.main .sr{grid-area:sr}
 @media (max-width:1180px){.main{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"sc sc" "sl sr"}}
-@media (max-width:720px){.main{grid-template-columns:minmax(0,1fr);grid-template-areas:"sc" "sl" "sr"}}
+/* 大遊戲畫面（設定）：舞台佔滿寬度、兩個側欄移到下面 */
+body.bigstage:not(.mobile) .main{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"sc sc" "sl sr"}
+body.bigstage:not(.mobile) .stage{max-width:min(1100px,max(440px,calc(100vh - 130px)))}
+@media (max-width:720px){.main{grid-template-columns:minmax(0,1fr);grid-template-areas:"sc" "sr" "sl"}}
+/* 機制提示卡（右欄最上面）：固定高度、內容在卡片裡捲動，出現提示時不會把下面的卡片擠下去 */
+.tipcard{height:240px;overflow-y:auto}
+.tipcard>*{flex-shrink:0}
+body.mobile .tipcard{height:auto;max-height:340px}
 .row{display:flex;gap:8px;flex-wrap:wrap}
 .muted{color:var(--muted);font-size:13px;margin:0}
 /* 側欄：卡片直排；時間軸固定高度、內部捲動 */
@@ -79,9 +87,56 @@ footer a{color:var(--accent)}
 footer .src{margin:0 0 4px;padding:0;list-style:none;display:grid;grid-template-columns:max-content 1fr;gap:2px 12px}
 footer .src li{display:contents}
 footer .src span{color:var(--fg)}
-/* 說明文字：長的先收成 6 行 */
-.btext{display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
-.btext.open{display:block}
+/* 手機版（body.mobile，由 src/ui/mobile.ts 依版面切換）：只看示範，隱藏自己練才用得到的東西 */
+body.mobile .pconly,body.mobile .hud.bar,body.mobile .modebtn[data-mode="rand"]{display:none}
+/* 舞台小（body.smallstage）或手機版：詠唱提示與王台詞不疊在舞台上（會擋住王的手勢與跑位），改看右欄的機制提示卡 */
+body.smallstage .casttip,body.smallstage .bossline,body.mobile .casttip,body.mobile .bossline{display:none}
+body.mobile .wrap{padding:10px 12px 24px;gap:12px}
+body.mobile h1 .beta{margin-left:6px}
+body.mobile .ctrls{gap:8px 12px}
+body.mobile .drills{grid-template-columns:minmax(0,1fr);gap:4px}
+body.mobile .drills .lbl{padding-top:0}
+body.mobile .drill{font-size:13px;padding:5px 10px}
+body.mobile .modebtn{padding:7px 12px}
+body.mobile .stage{max-width:100%}
+.tipnow{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:18px}
+.tipnow b{font-family:var(--f-display);color:var(--gold-2)}
+.tipnow span{font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
+.tiptext{margin:0;font-size:15px;font-weight:700;line-height:1.5;color:#ffe6a3}
+.tipalert{margin:0;font-size:15px;font-weight:900;color:var(--gold-2)}
+.tipalert.danger{color:#ff9aa4}
+.tipline{margin:0;font-size:14px;display:flex;flex-direction:column;gap:2px;border-left:3px solid var(--gold);padding-left:8px}
+.tipline span{font-size:11.5px;color:var(--gold-2);letter-spacing:.1em}
+.tiplog{list-style:none;margin:0;padding:8px 0 0!important;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)}
+.tiplog li{display:grid;grid-template-columns:40px 1fr;gap:6px}
+.tiplog li span:first-child{font-variant-numeric:tabular-nums}
+.tiplog b{color:var(--fg)}
+/* 說明卡：流程（編號清單）、要點；太長先收起來 */
+.btext{font-size:13.5px;line-height:1.55;color:var(--fg);max-height:15em;overflow:hidden;display:flex;flex-direction:column;gap:6px}
+.btext.open{max-height:none}
+.btext p{margin:0}
+.btext .bhead{font-weight:700;color:var(--gold-2);margin-top:4px}
+.btext .bsub{font-weight:700;font-size:12.5px;color:var(--muted)}
+.btext .bnote{font-size:12.5px;color:var(--muted)}
+.flow{margin:0;padding:0 0 0 0!important;list-style:none;counter-reset:f;display:flex;flex-direction:column;gap:2px!important}
+.flow li{counter-increment:f;display:grid;grid-template-columns:22px 1fr;gap:4px}
+.flow li::before{content:counter(f);font-size:11.5px;font-weight:700;color:var(--muted);text-align:right;padding-right:4px;font-variant-numeric:tabular-nums}
+.bpts{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px}
+/* 機制說明：每個機制「效果 → 預兆 → 應對」 */
+.mihead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;border-top:1px solid var(--line);padding-top:8px;font-size:12.5px;font-weight:700;letter-spacing:.08em;color:var(--muted)}
+.mihead .muted{font-size:11.5px;font-weight:400;letter-spacing:0}
+.milist{display:flex;flex-direction:column;gap:6px}
+.milist.scroll{max-height:360px;overflow:auto;padding-right:4px}
+details.mi{background:var(--panel-2);border-radius:9px;padding:6px 10px}
+details.mi summary{cursor:pointer;font-weight:700;font-size:14px}
+details.mi[open] summary{color:var(--gold-2);margin-bottom:4px}
+.midl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:5px 8px;font-size:13px;line-height:1.5}
+.midl dt{font-size:11.5px;font-weight:700;padding:1px 6px;border-radius:5px;align-self:start;margin-top:1px;white-space:nowrap}
+.midl dd{margin:0}
+.midl dt.effect{background:rgba(150,140,180,.18);color:#cfc7e6}
+.midl dt.tell{background:rgba(233,185,73,.18);color:var(--gold-2)}
+.midl dt.how{background:rgba(67,223,159,.16);color:var(--ok)}
+.howto{display:flex;flex-direction:column;gap:6px;font-size:13.5px}
 .linkbtn{all:unset;cursor:pointer;font-size:13px;color:var(--accent);align-self:flex-start}
 .linkbtn:hover{text-decoration:underline}
 .card .weaklist{padding-left:0}

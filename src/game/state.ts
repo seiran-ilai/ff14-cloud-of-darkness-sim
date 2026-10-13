@@ -195,6 +195,8 @@ export interface Drill {
   name: string;
   sub: string;
   brief: string;
+  /** 說明卡「機制說明」要列的機制（drills/mechinfo.ts 的名稱） */
+  info?: string[];
   setup(G: GameState): void;
 }
 

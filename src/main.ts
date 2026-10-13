@@ -19,6 +19,7 @@ import { replayActive, replayFrame, stopReplay } from './ui/replay';
 import { unlockAudio, play } from './ui/sound';
 import { bindKeyboard } from './input/keyboard';
 import { bindMouse } from './input/mouse';
+import { bindMobile, updTipCard } from './ui/mobile';
 
 const cfg = loadConfig();
 const input = newInput();
@@ -31,8 +32,10 @@ session.on('stats', () => renderStats(session));
 bindBar((i) => session.useAct(i));
 bindDrillPicker(session);
 bindSettings(session);
+document.body.classList.toggle('bigstage', cfg.big);
 bindKeyboard(session);
 bindMouse(view.cv, input);
+bindMobile(session, () => { renderTop(session); resize(); });
 // 音效只能在使用者互動後啟用
 ['keydown', 'pointerdown'].forEach((ev) => window.addEventListener(ev, unlockAudio, { capture: true }));
 
@@ -48,6 +51,7 @@ function frame(now: number): void {
     if (G && !G.paused && !session.frozen && !isSettingsOpen()) session.advance(real * cfg.speed * (G.ff ? 2 : 1));
     draw(session.G, cfg, { alpha: session.alpha, moveTo: input.moveTo });
     updHUD(session.G, input);
+    updTipCard(session.G);
     const sfx = session.drainSfx();
     if (cfg.sound && sfx.length) play(sfx);
   }

@@ -33,12 +33,15 @@ export function spin(G: GameState, t0: number): number {
     setCast(G, '迴旋式波動炮', P3.spin.cast, `王面向${face > 0 ? '東' : '西'}、${dir > 0 ? '順' : '逆'}時針轉 90°：內場跟著直線一格一格往前補`);
     say(G, '一群螻蟻，把你們趕盡殺絕！', 3);
     alertMsg(G, `迴旋式：${dir > 0 ? '順時針' : '逆時針'}`, 2.5);
+    if (G.p2) G.p2.aura = { kind: 'spin', face, dir, until: end };
     busy(G, end + 2);
   });
   // Bot：先算好每一擊前要站的格子（有人還在移動、算不出來就再試，直到第一擊前 1 秒）
-  const hz: Hazard[] = hits.map((h) => ({ t: h.t, hit: (c: Cell) => spinHit(center(c), h.a, 0.7) }));
+  // 詠唱很長：第一擊前先有幾個「不會被打」的步驟，讓 Bot 先就位（攻略：坦克先移到深處格）
+  const pre: Hazard[] = [0.35, 0.55, 0.75].map((k) => ({ t: t0 + P3.spin.cast * k, hit: () => false }));
+  const hz: Hazard[] = [...pre, ...hits.map((h) => ({ t: h.t, hit: (c: Cell) => spinHit(center(c), h.a, 0.6) }))];
   for (let k = 0; k < 4; k++) {
-    const tryPlan = (): void => { if (G.p2 && !dodge(G, k, hz, G.t) && G.t + 0.4 < hits[0].t - 1) at(G, G.t + 0.4, tryPlan); };
+    const tryPlan = (): void => { if (G.p2 && !dodge(G, k, hz.filter((h) => h.t > G.t + 0.3), G.t) && G.t + 0.4 < hits[0].t - 1) at(G, G.t + 0.4, tryPlan); };
     at(G, t0 + 1, tryPlan);
   }
   hits.forEach((h, k) => {

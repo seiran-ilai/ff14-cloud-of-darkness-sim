@@ -22,6 +22,8 @@ export const VIEW_FIXED = 40;
 /** 固定鏡頭的中心往北移：場地北緣（王、P1 單手安全區）不要被上方的詠唱條擋住 */
 export const VIEW_FIXED_CY = -7;
 export const VIEW_FOLLOW = 21;
+/** 跟隨鏡頭的距離（畫面中心到邊幾公尺）：近＝原本的放大、中、遠＝看得到場外邪眼、破片雲 */
+export const VIEW_ZOOM = { near: VIEW_FOLLOW, mid: 28, far: 36 } as const;
 /** 預兆判定前閃爍的秒數 */
 export const TELE_FLASH = 0.3;
 /** 回放：判定前後各錄幾秒、錄影頻率、播放倍速 */
@@ -117,8 +119,8 @@ export const DEATH = {
   /** 吸引後多久出中央圓預兆 / 判定（估計） */
   circleTele: 0.85,
   circleAt: 1.85,
-  /** 環形判定（= 圓炸後 2.6 秒，估計） */
-  donutAt: 4.45,
+  /** 環形判定（= 圓炸後 1.6 秒，估計；測試回饋：實戰中央圓一炸就要立刻進去） */
+  donutAt: 3.45,
   storedDelay: 2,
 } as const;
 
@@ -235,8 +237,8 @@ export const P3 = {
   /** 凝聚式：詠唱、直線半寬、外場／內場需要的人數；分散式：圓形半徑、外場晚幾秒 */
   charge: { cast: 5, hw: 2.5, needOut: 4, needIn: 2 },
   spread: { cast: 5, r: 3, outerDelay: 2 },
-  /** 迴旋式：詠唱、5 擊間隔、每擊轉幾度、直線半寬、長度（只打內場） */
-  spin: { cast: 5, gap: 1.4, step: (22.5 * Math.PI) / 180, hw: 1.5, len: 18 },
+  /** 迴旋式：詠唱、5 擊間隔、每擊轉幾度、直線半寬、長度（只打內場）。測試回饋：實戰讀條約 10～12 秒、範圍比原本大 */
+  spin: { cast: 11, gap: 1.4, step: (22.5 * Math.PI) / 180, hw: 2.2, len: 18 },
   /** 跳躍波動炮：小王跳到平臺內側（相對 f）、扇形半徑、半張角、兩發間隔 */
   jump: { f: -4, r: 10.5, w: Math.PI / 4, gap: 1.6 },
   /** 混沌迫近：詠唱、眩暈 */

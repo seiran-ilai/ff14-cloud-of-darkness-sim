@@ -49,6 +49,7 @@ export function chargeOrSpread(G: GameState, t0: number, kind: ChargeKind): numb
       ? '橙黃色蓄能：直線分攤。外場整組到平臺中央；內場角落 3 人站 L 形'
       : '紫黑色懸浮球：先內場、再外場各一個圓形。內場站待機格中央，外場散開');
     say(G, kind === 'charge' ? '把你們送入更加幽邃的黑暗之中！' : '全都給我消失吧！', 3);
+    if (G.p2) G.p2.aura = { kind, until: tR };
     busy(G, end + 1);
   });
   // Bot 反應後就位

@@ -3,27 +3,29 @@ import type { Drill } from '../game/state';
 import { at } from '../game/state';
 import { enterP2 } from '../mechanics/p2/enter';
 import { CATALOG } from './catalog';
+import { flowHtml } from './mechinfo';
 
-/** 按鈕的小字與說明（攻略處理） */
-const INFO: Record<string, { sub: string; brief: string }> = {
-  p3tower: { sub: '單手／雙手／黑霧＋踩塔', brief: '小王三重暗之戰技：<b>詠唱中小王會依序亮出三個球，要記住順序</b>，詠唱結束後才照順序放招（放招時不會再亮）。單手球躲到沒球那半邊；雙手球 MT＋H2、D1＋D3、D2＋D4 分攤；黑霧照相對方向散開。三擊結束後踩波動球的塔：內場踩自己角落的塔格，外場 MT/D1/D3 踩 12／9 點、H2/D2/D4 踩 6／3 點。' },
-  p3fear: { sub: '環形／十字', brief: '看王身邊的暗雲：<b>環形</b>＝環形 AOE，內場站到靠王的格子（各條中段），外場留在平臺外側；<b>方形</b>＝十字 AOE，外場沿環狀地板到斜角，內場離開中央十字線上的格子。被打中會恐怖 6 秒（格子照樣計時）。' },
-  p3curse: { sub: '詛咒結束時的扇形', brief: '外場 12 人得到「波動的詛咒」，結束時朝<b>面向</b>射出細扇形：結束前轉向不會打到人的方向（通常朝場外）。單練用 7／12／17 秒（實戰 7／33／97 秒）。' },
-  p3seed: { sub: '放種子 → 拉荊棘', brief: '種子彈：外場被點的人放平臺 3／9 點、其他人往平臺前側；內場被點的人放面向平臺的直條中段，<b>放完立刻離開那格</b>（荊棘會佔格）。荊棘叢生：外場 H2、D2 往北、D3、D4 往南沿環狀地板拉遠；內場連線的兩人各跑到橫條兩端。' },
-  p3charge: { sub: '直線分攤／圓形散開', brief: '<b>凝聚式</b>（橙黃色蓄能）：直線分攤，外場整組集合在平臺中央；內場角落 3 人站 L 形（角落格＋坦克往中間 1 格＋凸出格）。<b>分散式</b>（紫黑色球）：先內場、再外場各一個圓形，內場站待機格中央，外場散開到平臺四角與環狀地板。' },
-  p3spin: { sub: '內場補格＋外場跳躍', brief: '迴旋式：王面向東或西、順／逆時針轉 90° 打前後直線 5 次，內場跟著直線一格一格往已經掃過的格子補。跳躍波動炮：小王跳到平臺內側，正側＝先打正面再打兩側（先站兩側、再進正面），側正相反。' },
-  p3swap: { sub: '換位', brief: '混沌迫近：全員眩暈 2 秒並換位。外場近的 3 人（D2、D3、D4）東西互換；遠的 3 人（MT、H2、D1）和內場北端或南端角落互換；剩下兩個內場角落互換。換位後照新座位站。' },
-  p3dive: { sub: '被追擊的人跑一圈', brief: '潛地式：內場每角點 1 人，被點的人從角落格沿井字外圈<b>順時針跑一圈</b>，追擊會落在後面；其他人進凸出格讓路。外場同時處理三重暗之戰技（單手球 → 雙手球 → 雙手球）。' },
-  p3impale: { sub: '坦克死刑', brief: '磔殺：小王對外場 MT 的圓形死刑。MT 到平臺前緣吃，其他人往平臺內側退開。' },
-  p3interrupt: { sub: '外場 MT 插言', brief: '小王的暗之泛濫可以打斷：外場 MT 在詠唱中按技能列的「插言」（預設 5）。不是外場 MT 時就等它結束。' },
+/** 按鈕的小字、單練的補充說明，以及說明卡要列的機制（效果／預兆／應對在 mechinfo.ts） */
+export const P3_INFO: Record<string, { sub: string; brief: string; info: string[] }> = {
+  p3tower: { sub: '單手／雙手／黑霧＋踩塔', brief: flowHtml(['三重暗之戰技：記住三個球的順序', '照順序躲三擊', '踩波動球的塔']), info: ['三重暗之戰技', '波動球'] },
+  p3fear: { sub: '環形／十字', brief: '', info: ['恐懼之雲'] },
+  p3curse: { sub: '詛咒結束時的扇形', brief: '單練用 7／12／17 秒（實戰 7／33／97 秒）。', info: ['波動詛咒'] },
+  p3seed: { sub: '放種子 → 拉荊棘', brief: flowHtml(['種子彈：放種子、立刻離開', '荊棘叢生：拉斷連線']), info: ['種子彈', '荊棘叢生'] },
+  p3charge: { sub: '直線分攤／圓形散開', brief: '凝聚式和分散式隨機出一種，看王身上的特效分辨。', info: ['凝聚式波動炮', '分散式波動炮'] },
+  p3spin: { sub: '內場補格＋外場跳躍', brief: '內場處理迴旋式，外場同時處理跳躍波動炮。', info: ['迴旋式波動炮', '跳躍波動炮'] },
+  p3swap: { sub: '換位', brief: '', info: ['混沌迫近'] },
+  p3dive: { sub: '被追擊的人跑一圈', brief: '內場處理潛地式，外場同時處理三重暗之戰技（單手 → 雙手 → 雙手）。', info: ['潛地式波動炮', '三重暗之戰技'] },
+  p3impale: { sub: '坦克死刑', brief: '', info: ['磔殺'] },
+  p3interrupt: { sub: '外場 MT 插言', brief: '', info: ['暗之泛濫（小王）'] },
 };
 
 export const p3singles: Record<string, Drill> = Object.fromEntries(
   CATALOG.filter((m) => m.phase === 'p3').map((m) => [m.id, {
     group: 'p2',
     name: m.name,
-    sub: INFO[m.id]?.sub ?? 'P3 單一機制',
-    brief: INFO[m.id]?.brief ?? '',
+    sub: P3_INFO[m.id]?.sub ?? 'P3 單一機制',
+    brief: P3_INFO[m.id]?.brief ?? '',
+    info: P3_INFO[m.id]?.info ?? [],
     setup(G) {
       // 一開始就是華容道場地，所有人在基本站位
       enterP2(G);

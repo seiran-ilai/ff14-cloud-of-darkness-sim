@@ -3,9 +3,16 @@ import { saveConfig, cloneActs, DEFAULT_ACTS, MAX_ACTS, type ActionConfig, type 
 import type { Session } from '../game/session';
 import { $, seg } from './dom';
 import { renderBar } from './actionbar';
+import { resize } from '../render/canvas';
 
 const TYPE_NAME: Record<ActType, string> = { sprint: '疾跑（加速）', akb: '防擊退', dash: '位移', interject: '插言（打斷）' };
 const DIRS: [string, string][] = [['fwd', '前'], ['back', '後'], ['left', '左'], ['right', '右']];
+
+/** 大遊戲畫面：舞台佔滿寬度（說明欄移到下面），換完重算 canvas 大小 */
+export function applyBig(cfg: Config): void {
+  document.body.classList.toggle('bigstage', cfg.big);
+  resize();
+}
 
 /** 正在等待按鍵的技能列索引（−1 表示沒有） */
 let capturing = -1;
@@ -19,6 +26,8 @@ function onoff(cfg: Config, el: HTMLElement, key: 'auto' | 'hint' | 'text' | 'te
 
 export function renderSettings(cfg: Config): void {
   seg($('setCam'), ['fixed', 'follow'], cfg.cam, (v) => { cfg.cam = v as Config['cam']; saveConfig(cfg); renderSettings(cfg); }, (v) => (v === 'fixed' ? '固定北在上' : '跟隨角色並放大'));
+  seg($('setZoom'), ['near', 'mid', 'far'], cfg.zoom, (v) => { cfg.zoom = v as Config['zoom']; saveConfig(cfg); renderSettings(cfg); }, (v) => ({ near: '近', mid: '中', far: '遠' })[v]);
+  seg($('setBig'), ['on', 'off'], cfg.big ? 'on' : 'off', (v) => { cfg.big = v === 'on'; saveConfig(cfg); renderSettings(cfg); applyBig(cfg); }, (v) => (v === 'on' ? '開' : '關'));
   onoff(cfg, $('setSound'), 'sound');
   onoff(cfg, $('setAuto'), 'auto');
   onoff(cfg, $('setHint'), 'hint');

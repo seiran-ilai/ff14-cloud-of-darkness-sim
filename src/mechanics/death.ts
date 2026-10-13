@@ -4,7 +4,7 @@
  *   +circleAt 中央圓判定、環形預兆；+donutAt 環形判定。
  * 判定規則：判定圈碰到中央圓（circleR）→ 死亡宣告（致命）；環形判定時判定圈沒有整個在中央圓內 → 致命。
  *   沒開防擊退的人被往中心吸 min(pullDist, 距離)。吸引後離中心 < 5 m 給提醒（吸引傷害大幅提升）。
- * 估計值：吸引 16 m／0.7 秒、中央圓 10 m、圓炸後 2.6 秒判定環形（見 tuning.ts DEATH）。
+ * 估計值：吸引 16 m／0.7 秒、中央圓 10 m、圓炸後 1.6 秒判定環形（見 tuning.ts DEATH）。
  */
 import { O0, R } from '../core/constants';
 import { dist } from '../core/geometry';
@@ -57,8 +57,12 @@ export function death(G: GameState, t0: number, castLen: number): number {
     c1 = hitCircle(P, O0, DEATH.circleR);
     if (c1 && !P.dead) hurtPlayer(G, tag, '被中央圓形打中（死亡宣告）', true, fixOut());
     G.ents.forEach((e) => { if (!e.isPlayer && !e.dead && hitCircle(e, O0, DEATH.circleR)) botHit(G, e, tag, '被中央圓形打中'); });
-    // Bot：圓炸完進中央
-    npcs(G).forEach((e) => { const a = G.rng.rnd(0, 6.28), r = G.rng.rnd(0, 5); e.mt = { x: Math.sin(a) * r, y: -Math.cos(a) * r }; });
+    // Bot：圓炸完立刻進中央（環形判定很快，開疾跑）
+    npcs(G).forEach((e) => {
+      const a = G.rng.rnd(0, 6.28), r = G.rng.rnd(0, 5);
+      e.mt = { x: Math.sin(a) * r, y: -Math.cos(a) * r };
+      e.buffs.sprint = Math.max(e.buffs.sprint ?? 0, G.t + 3);
+    });
     G.tele.push({ k: 'donut', x: 0, y: 0, r: DEATH.circleR, until: G.t + (DEATH.donutAt - DEATH.circleAt) });
     G.hints = [{ x: 0, y: 0, r: DEATH.circleR - 0.5, label: '進中央' }];
   });

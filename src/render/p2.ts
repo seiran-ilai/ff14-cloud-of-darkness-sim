@@ -93,6 +93,34 @@ export function drawP2Bosses(c: CanvasRenderingContext2D, G: RenderState): void 
     if (fear.kind === 'ring') { circle(c, 0, 0, 6.5); c.stroke(); }
     else { c.strokeRect(-5.5, -5.5, 11, 11); }
   }
+  // 凝聚式＝橙黃色蓄能（往內收的光環）、分散式＝紫黑色懸浮球（繞王轉）、迴旋式＝面向前後的箭頭＋旋轉方向弧線
+  const aura = G.p2!.aura;
+  if (aura && aura.until > G.t) {
+    if (aura.kind === 'charge') {
+      const k = (G.t * 1.5) % 1;
+      c.strokeStyle = `rgba(255,184,74,${0.9 - 0.6 * k})`; c.lineWidth = px(4);
+      circle(c, 0, 0, 8 - 4 * k); c.stroke();
+      c.fillStyle = 'rgba(255,184,74,.22)'; circle(c, 0, 0, 4.2); c.fill();
+    } else if (aura.kind === 'spread') {
+      for (let i = 0; i < 6; i++) {
+        const a = G.t * 1.2 + (i * Math.PI) / 3, bx = Math.cos(a) * 5.5, by = Math.sin(a) * 5.5 - 0.6 * Math.sin(G.t * 4 + i);
+        c.fillStyle = '#2a1238'; circle(c, bx, by, 1); c.fill();
+        c.strokeStyle = '#a46bff'; c.lineWidth = px(1.5); c.stroke();
+      }
+    } else {
+      const f = dirV(aura.face!);
+      c.strokeStyle = '#ffd36b'; c.lineWidth = px(3);
+      [1, -1].forEach((s) => { c.beginPath(); c.moveTo(f.x * 4 * s, f.y * 4 * s); c.lineTo(f.x * 7 * s, f.y * 7 * s); c.stroke(); });
+      // 旋轉方向：沿面向往順／逆時針畫一段弧與箭頭
+      const a0 = aura.face! - Math.PI / 2, a1 = a0 + aura.dir! * 0.9;
+      c.strokeStyle = 'rgba(255,211,107,.85)'; c.lineWidth = px(2.5);
+      c.beginPath(); c.arc(0, 0, 6, a0, a1, aura.dir! < 0); c.stroke();
+      // 箭頭：尖端沿切線往旋轉方向，底邊沿半徑方向
+      const rx = Math.cos(a1), ry = Math.sin(a1), tx = -ry * aura.dir!, ty = rx * aura.dir!, px0 = rx * 6, py0 = ry * 6;
+      c.fillStyle = '#ffd36b';
+      c.beginPath(); c.moveTo(px0 + tx * 1.4, py0 + ty * 1.4); c.lineTo(px0 + rx * 0.8, py0 + ry * 0.8); c.lineTo(px0 - rx * 0.8, py0 - ry * 0.8); c.closePath(); c.fill();
+    }
+  }
   c.fillStyle = 'rgba(120,80,200,.18)'; circle(c, 0, 0, 4.5); c.fill();
   c.fillStyle = '#120d1e'; circle(c, 0, 0, 3); c.fill();
   c.strokeStyle = '#b99cff'; c.lineWidth = px(2); c.stroke();

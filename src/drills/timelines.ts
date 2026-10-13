@@ -19,6 +19,7 @@ import { OPENER, GREAT_DELUGE, REACT } from '../core/tuning';
 import { inArena } from '../core/geometry';
 import { homePos } from '../core/positions';
 import { npcs } from '../game/bots';
+import { flowHtml, PHASE_MECHS } from './mechinfo';
 
 /** P1 開場：3 次暗之刃（攻擊方式不重複）→ 暗之大泛濫，圓形外圍消失、進入 P2 魔法陣。回傳場地變化的時間 */
 export function p1Seg(G: GameState, t0: number): number {
@@ -94,15 +95,19 @@ export function tl2Seg(G: GameState, t0: number, end: TlEnd = 'game'): number {
   return tlEnd(G, t0 + 113, end);
 }
 
-export const OPENER_BRIEF = '準備階段：場地是大圓形，地面有直角 V 字圖案。暗之刃 3 次，攻擊方式一定不重複。單手舉刀＝所有人走到沒握刀那隻手的那側（場地北緣、王的左右兩側）；雙手舉刀構於身前＝打北半場的大範圍，退到地面直角線（V 字頂點）就安全，不用退太後面。之後暗之大泛濫：詠唱時會先標出會消失的外圍，大傷害全場 AOE＋15 秒出血，場地只剩中間的鑽石形（P2 魔法陣，王底下沒有地板）。';
-export const TL1_BRIEF = '陰冷擁抱×2 → 齊射式 → 核爆 → 黑暗神聖 → 暗之刃 → 超賦風／死 → 超石化 → 暗之刃（＋儲存的飆風／極死）→ 齊射式 → 極死／飆風。陰冷擁抱減益 40／56／99／111 秒，會在其他機制之間結束。';
-export const TL2_BRIEF = '陰冷擁抱×2 → 齊射式 → 飆風／極死 → 超賦風／死 → 連射式 → 齊射式 → 暗之刃（＋儲存的飆風／極死）→ 核爆。陰冷擁抱減益 51／107 與 50／57 秒。';
+export const OPENER_BRIEF = '場地是大圓形，地面有直角 V 字圖案。'
+  + flowHtml(['暗之刃 ×3（攻擊方式不會重複）', '暗之大泛濫 → 場地變成鑽石形魔法陣']);
+export const TL1_BRIEF = flowHtml(['陰冷擁抱 ×2', '齊射式波動炮', '核爆', '黑暗神聖', '暗之刃', '超賦風／超賦死', '超石化', '暗之刃＋存的飆風／極死', '齊射式波動炮', '極死／飆風'])
+  + '<p class="bnote">陰冷擁抱的減益 40／56／99／111 秒，會穿插在其他機制之間結束。</p>';
+export const TL2_BRIEF = flowHtml(['陰冷擁抱 ×2', '齊射式波動炮', '飆風／極死', '超賦風／超賦死', '連射式波動炮', '齊射式波動炮', '暗之刃＋存的飆風／極死', '核爆'])
+  + '<p class="bnote">陰冷擁抱的減益 51／107 與 50／57 秒。</p>';
 
 export const opener: Drill = {
   tl: true,
   name: 'P1 開場',
   sub: '暗之刃×3 → 暗之大泛濫',
   brief: OPENER_BRIEF,
+  info: PHASE_MECHS.p1,
   setup(G) {
     const end = p1Seg(G, 0);
     at(G, end + 2, () => { G.endT = G.t; });
@@ -114,6 +119,7 @@ export const tl1: Drill = {
   name: 'P2 時間軸 1',
   sub: '核爆 → 神聖 → 刃 → 超賦 → 石化',
   brief: TL1_BRIEF,
+  info: PHASE_MECHS.tl1,
   setup(G) { tl1Seg(G, 0); },
 };
 
@@ -122,5 +128,6 @@ export const tl2: Drill = {
   name: 'P2 時間軸 2',
   sub: '飆風／極死 → 超賦 → 連射 → 核爆',
   brief: TL2_BRIEF,
+  info: PHASE_MECHS.tl2,
   setup(G) { tl2Seg(G, 0); },
 };
