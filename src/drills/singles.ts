@@ -97,7 +97,7 @@ export const singles: Record<string, SingleDrill> = {
   beam: single({
     name: '連射式波動炮',
     sub: '直線分攤四輪',
-    brief: '每聯盟點 1 名非坦克，直線分攤四輪，最前面兩人傷害較高。坦克站最前、其他人排在後面，別站到別聯盟的線上。',
+    brief: '每隊伍點 1 名非坦克，直線分攤四輪，最前面兩人傷害較高。坦克站最前、其他人排在後面，別站到別隊伍的線上。',
     mechs: ['連射式波動炮'],
     seg: (G, t0) => beam(G, t0) + 0.9,
   }, 1, 0),

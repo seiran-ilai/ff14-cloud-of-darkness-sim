@@ -1,8 +1,8 @@
 /*
  * 連射式波動炮
- * 時間點（相對 t0）：0 開始詠唱、每聯盟點名 1 名非坦克；+cast 起每 interval 秒一輪，共 4 輪；+8.4 結算。
- * 判定規則：每輪三條直線從王指向各聯盟被點名者，寬 width。判定圈每輪都要碰到自己聯盟的線（分攤），
- *   碰到別聯盟的線算失誤。坦克要在自己線上的最前 2 位，其他人要在第 3 位以後。
+ * 時間點（相對 t0）：0 開始詠唱、每隊伍點名 1 名非坦克；+cast 起每 interval 秒一輪，共 4 輪；+8.4 結算。
+ * 判定規則：每輪三條直線從王指向各隊伍被點名者，寬 width。判定圈每輪都要碰到自己隊伍的線（分攤），
+ *   碰到別隊伍的線算失誤。坦克要在自己線上的最前 2 位，其他人要在第 3 位以後。
  * 估計值：詠唱 4 秒、線寬 5 m、間隔 1.2 秒（見 tuning.ts BEAM）。
  * TODO(確認): docs 說「非 1、2 仇」，目前實作為「非坦克」。
  */
@@ -30,7 +30,7 @@ export function beam(G: GameState, t0: number): number {
   const P = G.player;
   const fix = (): Fix => ({ ...beamSlot(P), r: 1.3, label: roleType(P.role) === 'tank' ? '坦克站最前' : '排在坦克後面' });
   at(G, t0, () => {
-    setCast(G, '連射式波動炮', BEAM.cast, '直線分攤四輪：坦克站最前、其他人排後面，別站到別聯盟的線');
+    setCast(G, '連射式波動炮', BEAM.cast, '直線分攤四輪：坦克站最前、其他人排後面，別站到別隊伍的線');
     const tg = {} as Record<Alliance, Entity>;
     ALS.forEach((al) => { tg[al] = G.rng.pickOne(G.ents.filter((e) => e.al === al && roleType(e.role) !== 'tank')); });
     G.extra.beam = tg;
@@ -52,8 +52,8 @@ export function beam(G: GameState, t0: number): number {
     const lineOf = (al: Alliance): BeamLine => lines.find((l) => l.al === al)!;
     G.ents.forEach((e) => {
       if (e.isPlayer || e.dead) return;
-      if (!hitRay(e, BOSS, lineOf(e.al).v, halfW)) botHit(G, e, tag, `第 ${k + 1} 輪沒進自己聯盟的線`);
-      if (lines.some((l) => l.al !== e.al && hitRay(e, BOSS, l.v, halfW))) botHit(G, e, tag, `第 ${k + 1} 輪站到別聯盟的線`);
+      if (!hitRay(e, BOSS, lineOf(e.al).v, halfW)) botHit(G, e, tag, `第 ${k + 1} 輪沒進自己隊伍的線`);
+      if (lines.some((l) => l.al !== e.al && hitRay(e, BOSS, l.v, halfW))) botHit(G, e, tag, `第 ${k + 1} 輪站到別隊伍的線`);
     });
     if (P.dead) return;
     const inL = lines.filter((l) => hitRay(P, BOSS, l.v, halfW));
@@ -70,9 +70,9 @@ export function beam(G: GameState, t0: number): number {
     G.hints = [];
     if (P.dead) return;
     const tank = roleType(P.role) === 'tank';
-    if (res.every((r) => r.inMine)) good(G, tag, `四輪都在 ${P.al} 聯盟的線上分攤`, fix());
-    else bad(G, tag, `有 ${res.filter((r) => !r.inMine).length} 輪沒進 ${P.al} 聯盟的線`, fix());
-    if (res.some((r) => r.extra)) bad(G, tag, '站到別聯盟的線上，多吃傷害', fix());
+    if (res.every((r) => r.inMine)) good(G, tag, `四輪都在 ${P.al} 隊伍的線上分攤`, fix());
+    else bad(G, tag, `有 ${res.filter((r) => !r.inMine).length} 輪沒進 ${P.al} 隊伍的線`, fix());
+    if (res.some((r) => r.extra)) bad(G, tag, '站到別隊伍的線上，多吃傷害', fix());
     const rk = res.filter((r) => r.inMine);
     if (rk.length) {
       if (tank) { if (rk.every((r) => r.rank <= 1)) good(G, tag, '坦克站在最前面兩位', fix()); else bad(G, tag, '坦克沒站在最前面兩位', fix()); }

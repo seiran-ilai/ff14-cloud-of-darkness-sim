@@ -78,10 +78,10 @@ export const sbFacing = (side: Side): number => (side < 0 ? -Math.PI / 2 : Math.
 
 export type Zone = 'in' | Side;
 
-/** 內場 12 人：B 聯盟 8 人＋A／C 的 ST、H1 */
+/** 內場 12 人：B 隊伍 8 人＋A／C 的 ST、H1 */
 export const zoneOf = (al: Alliance, role: Role): Zone => (al === 'B' || role === 'ST' || role === 'H1' ? 'in' : al === 'A' ? -1 : 1);
 
-/** 內場待機格（格子座標）與站在格內的位置（B 聯盟 H1/H2/D1/D2 站偏本體側） */
+/** 內場待機格（格子座標）與站在格內的位置（B 隊伍 H1/H2/D1/D2 站偏本體側） */
 const IN_SEAT: Record<string, [number, number, number?]> = {
   'A-H1': [1, 0], 'A-ST': [2, 1], 'B-D1': [1, 2, 1.2],
   'C-H1': [6, 0], 'C-ST': [5, 1], 'B-D2': [6, 2, -1.2],

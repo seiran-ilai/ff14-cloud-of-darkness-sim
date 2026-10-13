@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>暗黑之雲模擬器</title>
+<title>暗黑之雲模擬器（測試版）</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Serif+TC:wght@900&display=swap" rel="stylesheet">
@@ -12,10 +12,10 @@
 <div class="wrap">
   <header class="top">
     <div>
-      <h1 title="FF14 滅・暗黑之雲激鬥戰：P1 開場・P2 第一次魔法陣・P3 華容道・P4 第二次魔法陣">暗黑之雲 <em>機制模擬器</em></h1>
+      <h1 title="FF14 滅・暗黑之雲激鬥戰：P1 開場・P2 第一次魔法陣・P3 華容道・P4 第二次魔法陣">暗黑之雲 <em>機制模擬器</em><span class="beta">測試版</span></h1>
     </div>
     <div class="ctrls">
-      <div class="grp"><span class="lbl">聯盟</span><span id="alSeg" class="grp"></span></div>
+      <div class="grp"><span class="lbl">隊伍</span><span id="alSeg" class="grp"></span></div>
       <div class="grp"><span class="lbl">職能</span><span id="roleSeg" class="grp"></span></div>
       <span class="seatinfo" id="seatInfo"></span>
       <button class="btn ghost sm" id="openHelp">? 操作</button>
@@ -31,7 +31,10 @@
   </div>
 
   <div class="main">
-    <div>
+    <aside class="side sl">
+      <div class="card" id="brief"></div>
+    </aside>
+    <div class="sc">
       <div class="stage" id="stage">
         <canvas id="cv"></canvas>
         <div class="hud castwrap" id="castW" hidden><div class="casthead"><span class="castname" id="castN"></span><span class="casttime" id="castT"></span></div><div class="castbar"><i id="castF"></i></div><div class="casttip" id="castTip" hidden></div></div>
@@ -45,8 +48,7 @@
         <div class="hud replay" id="rp" hidden><div class="rphead"><b id="rpTitle"></b><span id="rpTime"></span></div><div class="rpbar"><i id="rpFill"></i></div><div class="row"><button class="btn sm" id="rpAgain">重播</button><button class="btn ghost sm" id="rpClose">回到結算</button></div></div>
       </div>
     </div>
-    <aside class="side">
-      <div class="card" id="brief"></div>
+    <aside class="side sr">
       <div class="card" id="seqCard" hidden></div>
       <div class="card">
         <h3>紀錄</h3>

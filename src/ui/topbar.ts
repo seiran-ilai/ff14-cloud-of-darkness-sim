@@ -1,4 +1,4 @@
-// 上方：聯盟、職能、練習項目選擇；右側：本項目紀錄、最常錯的機制
+// 上方：隊伍、職能、練習項目選擇；右側：本項目紀錄、最常錯的機制
 import { ALS, ROLES, type Alliance, type Role } from '../core/constants';
 import { saveConfig } from '../core/config';
 import { DRILLS, WEAK_PREFIX } from '../drills';
