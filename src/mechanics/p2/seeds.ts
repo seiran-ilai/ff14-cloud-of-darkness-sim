@@ -13,7 +13,7 @@
  * 小王暗之泛濫：可打斷的全場 AOE；外場 MT 用插言打斷（玩家是外場 MT 時要自己按）。
  * 估計值：見 tuning.ts P3.seed／P3.thorn／P3.sbDeluge。
  */
-import { P3, HIT } from '../../core/tuning';
+import { P2, P3, HIT, REACT } from '../../core/tuning';
 import { cellAt, cellUnder, cellsTouching, neighbors, center, rel, zoneE, roleE, homeE, type Cell } from '../../core/p2';
 import { dist } from '../../core/geometry';
 import { hitCircle } from '../../core/hit';
@@ -24,7 +24,7 @@ import { isBot } from '../../game/bots';
 import { entIndex } from '../../game/p2state';
 import { cornerMembers, rearrange } from '../../game/p3plan';
 import { p2Goto } from '../../game/p2nav';
-import { failE, busy, allSettle, SIDES, outers, ringWalk } from './common';
+import { failE, busy, allSettle, SIDES, outers, ringWalk, outerGo } from './common';
 
 /** 原位在外場荊棘上、暫時讓開的人（荊棘叢生結束、荊棘消失時恢復） */
 const thornShifted = new Set<Entity>();
@@ -143,6 +143,15 @@ function thornWatch(G: GameState, from: number, until: number): void {
 /** 荊棘叢生的拉線點（以東、南為正）：外場荊棘拉到近的點、內場荊棘拉到遠的點 */
 const PULL_PT: Record<'outer' | 'inner', Vec> = { outer: { x: 15, y: 20 }, inner: { x: 6, y: 24.3 } };
 
+/**
+ * 荊棘叢生的誘導站位（攻略圖，相對座標 f, r；r > 0＝相對東＝西平臺的北）：荊棘連線最近的人，
+ * 所以詠唱時外場先站到自己要誘導的荊棘旁邊——H2 平臺外側偏北的角（平臺北邊的荊棘）、D2 平臺內側偏北（格子北邊的荊棘）、
+ * D3 平臺內側偏南、D4 平臺外側偏南的角；MT、D1 在小王腳下。
+ */
+const LURE: Record<string, [number, number]> = {
+  H2: [3.5, 4], D4: [3.5, -4], D2: [P2.px0 - P2.sbX + 1, 2.5], D3: [P2.px0 - P2.sbX + 1, -2.5], MT: [1, 0], D1: [-1, 0],
+};
+
 /** 內場連線的人要去的橫條末端格 */
 const pairEnd = (e: Entity, west: boolean): Cell => cellAt(west ? 0 : 7, cellUnder(homeE(e))!.j <= 3 ? 1 : 6)!;
 
@@ -152,8 +161,17 @@ export function thornTether(G: GameState, t0: number): number {
   const tL = t0 + P3.thorn.cast, tCheck = tL + P3.thorn.dur - P3.thorn.warnLeft;
   const pulls: { thorn: Vec; who: Entity; to: Vec }[] = [];
   const pairs: [Entity, Entity][] = [];
+  // 詠唱時：外場先站到誘導位置（荊棘會連線最近的人）
+  at(G, t0 + REACT, () => {
+    SIDES.forEach((side) => outers(G, side).forEach((e) => {
+      const l = LURE[roleE(e)];
+      if (l && isBot(G, e) && !e.dead) outerGo(G, e, rel(side, ...l));
+    }));
+    const P = G.player, l = LURE[roleE(P)];
+    if (l && zoneE(P) !== 'in' && G.cfg.hint && !G.auto) G.hints = [{ ...rel(zoneE(P) as -1 | 1, ...l), r: 1, label: roleE(P) === 'MT' || roleE(P) === 'D1' ? '留在小王腳下' : '站到要誘導的荊棘旁' }];
+  });
   at(G, t0, () => {
-    setCast(G, '荊棘叢生', P3.thorn.cast, '荊棘連線最近的人：外場沿環狀地板拉遠；內場兩人各跑到橫條兩端');
+    setCast(G, '荊棘叢生', P3.thorn.cast, '荊棘連線最近的人：外場先站到自己要誘導的荊棘旁（H2／D4 平臺外側角、D2／D3 平臺內側），連線後沿環狀地板拉遠；內場兩人各跑到橫條兩端');
     say(G, '生於黑暗之物正在操縱暗之植物……', 3);
     busy(G, tCheck + 2);
   });
