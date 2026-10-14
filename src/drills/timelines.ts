@@ -95,7 +95,7 @@ export function tl2Seg(G: GameState, t0: number, end: TlEnd = 'game'): number {
   return tlEnd(G, t0 + 113, end);
 }
 
-export const OPENER_BRIEF = '場地是大圓形，地面有直角 V 字圖案。'
+export const OPENER_BRIEF = '場地是大圓形，地面中央有一個正方形（轉 45°）。'
   + flowHtml(['暗之刃 ×3（攻擊方式不會重複）', '暗之大泛濫 → 場地變成鑽石形魔法陣']);
 export const TL1_BRIEF = flowHtml(['陰冷擁抱 ×2', '齊射式波動炮', '核爆', '黑暗神聖', '暗之刃', '超賦風／超賦死', '超石化', '暗之刃＋存的飆風／極死', '齊射式波動炮', '極死／飆風'])
   + '<p class="bnote">陰冷擁抱的減益 40／56／99／111 秒，會穿插在其他機制之間結束。</p>';

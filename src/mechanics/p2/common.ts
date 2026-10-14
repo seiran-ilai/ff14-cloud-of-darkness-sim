@@ -32,7 +32,7 @@ export function allSettle(G: GameState, t: number): void {
     G.ents.forEach((e) => {
       if (!isBot(G, e) || e.dead || zoneE(e) === 'in') return;
       e.faceLock = null;
-      if (onPlatform(e)) e.mt = homeE(e); else ringWalk(G, e, homeE(e), G.t);
+      outerGo(G, e, homeE(e));
     });
     busy(G, G.t + 4);
   });
@@ -42,10 +42,35 @@ export function allSettle(G: GameState, t: number): void {
 /** 王（內場中央） */
 export const BOSS3 = { x: 0, y: 0 } as const;
 
-/** 外場 Bot 走到 p：兩端都在平臺上就直走，否則沿環狀地板走 */
+/**
+ * 外場 Bot 走到 p：兩端都在平臺上就直走，否則沿環狀地板走。
+ * 平臺南北邊緣中間有荊棘時，平臺上不直走：先往平臺中線靠、沿中線走，再出去（不踩荊棘）。
+ */
 export function outerGo(G: GameState, e: Entity, p: Vec): void {
-  if (onPlatform(e) && onPlatform(p)) { e.mt = p; e.buffs.sprint = Math.max(e.buffs.sprint ?? 0, G.t + 4); }
-  else ringWalk(G, e, p, G.t);
+  if (!(onPlatform(e) && onPlatform(p))) { ringWalk(G, e, p, G.t); return; }
+  e.buffs.sprint = Math.max(e.buffs.sprint ?? 0, G.t + 4);
+  if (!G.p2?.thorns.some((th) => th.cell < 0)) { e.mt = p; return; }
+  const mid = (q: Vec): Vec => ({ x: q.x, y: Math.max(-1.8, Math.min(1.8, q.y)) });
+  walkPts(G, e, [mid(e), mid(p), p], G.t);
+}
+
+/** 依序走過這些點（依距離估時間換目標）；中途有別的機制換了目標就停 */
+function walkPts(G: GameState, e: Entity, pts: Vec[], t: number): number {
+  const v = RUN * SPRINT_MUL;
+  let cur: Vec = { x: e.x, y: e.y }, when = t;
+  let mine: Vec | null = null, first = true;
+  pts.forEach((p) => {
+    at(G, when, () => {
+      if (e.dead || (!first && e.mt !== mine)) { mine = null; return; }
+      first = false;
+      mine = p;
+      e.mt = p;
+      e.buffs.sprint = Math.max(e.buffs.sprint ?? 0, G.t + 3);
+    });
+    when += Math.hypot(p.x - cur.x, p.y - cur.y) / v + 0.05;
+    cur = p;
+  });
+  return when;
 }
 
 /**

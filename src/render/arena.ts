@@ -1,6 +1,6 @@
 // 場地、格線、地面圖案、方位字：P1 開場是大圓形；P2 魔法陣是北角切平的菱形（王底下沒有地板）
 import { R } from '../core/constants';
-import { GEM_CUT, OPENER, FLOOR_V_Y } from '../core/tuning';
+import { GEM_CUT, OPENER, FLOOR_SQ } from '../core/tuning';
 import type { RenderState } from '../game/state';
 import { px, text } from './canvas';
 
@@ -13,12 +13,20 @@ function gemPath(c: CanvasRenderingContext2D, fresh = true): void {
   c.closePath();
 }
 
-/** 地面的直角 V 字圖案：頂點在中心偏南，兩邊 45° 往下到場邊（clip 在場地內） */
-function floorV(c: CanvasRenderingContext2D): void {
-  c.strokeStyle = 'rgba(230,220,255,.55)'; c.lineWidth = px(1.5);
+/**
+ * 地面圖案（依實際地圖簡化，只留關鍵的中央正方形）：以場地中心為中心、轉 45° 的正方形，
+ * 四個角離中心 FLOOR_SQ。攻略說的「地面直角線」就是它的北角（雙手暗之刃退到這裡就安全）。
+ */
+function floorSquare(c: CanvasRenderingContext2D): void {
+  const d = FLOOR_SQ;
+  c.fillStyle = 'rgba(185,156,255,.07)';
+  c.strokeStyle = 'rgba(230,220,255,.6)'; c.lineWidth = px(1.8);
   c.beginPath();
-  c.moveTo(-40, FLOOR_V_Y + 40); c.lineTo(0, FLOOR_V_Y); c.lineTo(40, FLOOR_V_Y + 40);
-  c.stroke();
+  c.moveTo(0, -d); c.lineTo(d, 0); c.lineTo(0, d); c.lineTo(-d, 0); c.closePath();
+  c.fill(); c.stroke();
+  // 北角（直角，雙手暗之刃的安全點）稍微強調
+  c.fillStyle = 'rgba(230,220,255,.75)';
+  c.beginPath(); c.arc(0, -d, 0.45, 0, Math.PI * 2); c.fill();
 }
 
 function dirs(c: CanvasRenderingContext2D, r: number): void {
@@ -43,7 +51,7 @@ export function drawArena(c: CanvasRenderingContext2D, G: Pick<RenderState, 'rou
     c.strokeStyle = '#8c79c4'; c.lineWidth = px(2.5); c.stroke();
     c.save();
     c.beginPath(); c.arc(0, 0, RR, 0, Math.PI * 2); c.clip();
-    floorV(c);
+    floorSquare(c);
     // 進 P2 前的範圍提示：圓形外圍（菱形以外）會消失
     if ((G.extra.gemWarn ?? -1) > G.t) {
       const k = 0.35 + 0.15 * Math.sin(G.t * 8);
@@ -72,7 +80,7 @@ export function drawArena(c: CanvasRenderingContext2D, G: Pick<RenderState, 'rou
     c.beginPath(); c.moveTo(-R * (1 - t), -R * t); c.lineTo(R * t, R * (1 - t)); c.stroke();
     c.beginPath(); c.moveTo(R * (1 - t), -R * t); c.lineTo(-R * t, R * (1 - t)); c.stroke();
   }
-  floorV(c);
+  floorSquare(c);
   c.restore();
   dirs(c, R);
 }

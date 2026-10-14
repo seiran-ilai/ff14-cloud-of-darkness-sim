@@ -70,7 +70,7 @@ export interface Entity {
   /** 換位後另外指定的定點（例如進格子的外場 MT：角落格往中間 2 格）；沒有就照座位 */
   seatHome?: Vec;
   /** P2 Bot 刷新格子的狀態 */
-  p2r?: { phase: 'idle' | 'out' | 'wait' | 'back'; at: number; cell: number; threshold: number; ret?: Vec };
+  p2r?: { phase: 'idle' | 'out' | 'wait' | 'back'; at: number; cell: number; threshold: number; ret?: Vec; stay?: boolean };
 }
 
 export type Telegraph =

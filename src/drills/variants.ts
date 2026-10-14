@@ -53,7 +53,7 @@ export const VARIANTS: Record<string, VariantGroup[]> = {
   }],
   p3fear: [{
     key: 'fear', label: '形狀', opts: [
-      { value: 'ring', label: '環形', tell: '王身邊出現紫色<b>環形暗雲</b>', how: '內場站<b>靠王的格子</b>（各條中段）；外場留在<b>平臺外側</b>。' },
+      { value: 'ring', label: '環形', tell: '王身邊出現紫色<b>環形暗雲</b>', how: '月環幾乎蓋滿整個外場：內場站<b>靠王的格子</b>（各條中段，最外圈的凸出格會被打到）；外場到<b>平臺緊貼華容道的那一小塊</b>。' },
       { value: 'cross', label: '十字', tell: '王身邊出現<b>方形暗雲</b>、紫電往外擴散成十字', how: '外場沿環狀地板到<b>斜角</b>；內場<b>離開中央十字線</b>上的格子。' },
     ],
   }],
