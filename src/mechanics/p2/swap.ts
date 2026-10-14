@@ -4,8 +4,9 @@
  * 混沌迫近（王）：+cast 全員眩暈 2 秒並換位（同職能互換；內場格子的站立計時不重置）。
  *   換位規律（docs）：外場離王近的 3 人和另一側近的 3 人互換；外場遠的 3 人和內場「較遠一角」互換
  *   （北端或南端隨機）；沒和外場換的兩個內場角落彼此互換。
- *   模擬器：外場近 3 人＝D2、D3、D4，遠 3 人＝MT、H2、D1（攻略：外場的坦克＋補師＋DPS 進內場）；
- *   換位後改坐對方的座位（之後所有站位都照新座位）。
+ *   模擬器（照小抄イディル改）：外場近 3 人＝D2、D3、D4（東西平臺互換），遠 3 人＝MT、H2、D1：
+ *   A 隊進東北／東南角、C 隊進西北／西南角；西側角落的人到東平臺、東側角落的人到西平臺。
+ *   換位後改坐對方的座位（之後所有站位都照新座位）；進格子的 MT 站角落格往中間 2 格（seatHome）。
  * 潛地式（王）：台詞「你逃得掉嗎？」。內場每個角落點 1 人，在他身後連放 16 次圓形（落在 lag 秒前的位置）。
  *   處理（攻略）：被點者從角落格出發，沿井字外圈順時針跑一圈回來；其他人進凸出格讓路。
  * 磔殺（小王）：對外場 MT 的圓形死刑；其他人離開。
@@ -40,13 +41,17 @@ const FAR: Role[] = ['MT', 'H2', 'D1'];
 const NEAR: Role[] = ['D2', 'D3', 'D4'];
 const byType = (seats: Seat[], r: Role): Seat => seats.find((s) => roleType(s.role) === roleType(r))!;
 
-/** 換位的配對（座位對座位） */
+/**
+ * 換位的配對（座位對座位）。小抄（イディル改）：外場遠的 3 人換到「較遠一側」的角落——
+ * A 隊（西平臺）的 MT／H2／D1 進東北或東南角，C 隊（東平臺）的進西北或西南角；
+ * 被換出來的角落：西側角落的人到東平臺、東側角落的人到西平臺。
+ */
 function swapPairs(north: boolean): [Seat, Seat][] {
   const pairs: [Seat, Seat][] = NEAR.map((r) => [{ al: 'A', role: r }, { al: 'C', role: r }]);
   const wk = north ? 0 : 2, ek = north ? 1 : 3;
   FAR.forEach((r) => {
-    pairs.push([{ al: 'A', role: r }, byType(CORNER_SEATS[wk], r)]);
-    pairs.push([{ al: 'C', role: r }, byType(CORNER_SEATS[ek], r)]);
+    pairs.push([{ al: 'A', role: r }, byType(CORNER_SEATS[ek], r)]);
+    pairs.push([{ al: 'C', role: r }, byType(CORNER_SEATS[wk], r)]);
   });
   const [x, y] = north ? [2, 3] : [0, 1];
   CORNER_SEATS[x].forEach((s) => pairs.push([s, byType(CORNER_SEATS[y], s.role)]));
@@ -59,7 +64,7 @@ export function swap(G: GameState, t0: number): number {
   const tR = t0 + P3.swap.cast;
   const north = variant(G, 'swap', G.rng.chance(0.5) ? 'north' : 'south') === 'north';
   at(G, t0, () => {
-    setCast(G, '混沌迫近', P3.swap.cast, `換位：外場遠的 3 人和內場${north ? '北' : '南'}端角落互換、外場近的 3 人東西互換；換位後坦克記得挑釁`);
+    setCast(G, '混沌迫近', P3.swap.cast, `換位：外場 MT／H2／D1 換到另一側的${north ? '北' : '南'}端角落（A 隊→東、C 隊→西），那兩個角落的人換到另一側平臺；D2／D3／D4 東西互換；換位後坦克記得挑釁`);
     busy(G, tR + 3);
   });
   at(G, tR, () => {
@@ -71,6 +76,12 @@ export function swap(G: GameState, t0: number): number {
       const ea = holder.get(seatKey(a)), eb = holder.get(seatKey(b));
       if (!ea || !eb || ea.dead || eb.dead) return;
       ea.seat = b; eb.seat = a;
+    });
+    // 小抄：進格子的外場 MT 站「角落格往中間 2 格」（不是原本角落坦克的位置，角落格旁 1 格）
+    G.ents.forEach((e) => {
+      if (e.dead || e.role !== 'MT' || zoneOf(e.al, e.role) === 'in' || zoneE(e) !== 'in') return;
+      const [ci, cj] = CORNERS[cornerOfCell(cellUnder(homeE(e))!)];
+      e.seatHome = center(cellAt(ci === 1 ? 3 : 4, cj)!);
     });
     // 瞬間換位：站到新座位；內場格子的站立計時不重置（換成新的人繼續算）
     const stands = new Map<number, number>();

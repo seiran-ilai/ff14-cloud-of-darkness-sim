@@ -1,6 +1,10 @@
 /* 遊戲舞台：canvas 與疊在上面的 HUD、技能列、覆蓋層 */
 .stage{position:relative;width:100%;max-width:min(900px,max(440px,calc(100vh - 285px)));margin:0 auto;aspect-ratio:1/1;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:#06050b;user-select:none;-webkit-user-select:none}
-#cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:crosshair}
+/* 技能列放在場地下方另一條（不蓋到場地）：舞台的內容區維持正方形給 canvas，下方加一條技能列的高度 */
+.stage{box-sizing:content-box;padding-bottom:var(--barh);width:calc(100% - 2px)}
+.stage{--barh:74px}
+#cv{position:absolute;top:0;left:0;right:0;bottom:var(--barh);width:100%;height:calc(100% - var(--barh));display:block;cursor:crosshair}
+body.mobile .stage{--barh:0px}
 .hud{position:absolute;pointer-events:none;font-family:var(--f-body)}
 /* 詠唱條（仿遊戲：技能名在左、剩餘秒數在右，下方金色條）：放大、置中在畫面上緣（不擋住王的手勢與自己） */
 .castwrap{top:10px;left:50%;transform:translateX(-50%);width:min(62%,500px);display:flex;flex-direction:column;gap:3px}
@@ -12,7 +16,7 @@
 /* 詠唱提示：詠唱條下方的處理方式 */
 .casttip{margin-top:4px;text-align:center;font-size:clamp(13px,2vw,16px);font-weight:700;line-height:1.4;color:#ffe6a3;background:rgba(10,8,18,.78);border:1px solid rgba(233,185,73,.45);border-radius:6px;padding:4px 10px;text-shadow:0 1px 2px #000}
 /* 王台詞對話框 */
-.bossline{bottom:160px;left:50%;transform:translateX(-50%);width:min(86%,520px);display:flex;flex-direction:column;gap:2px;font-size:15px;font-weight:700;color:#fff;background:linear-gradient(rgba(22,16,38,.92),rgba(10,8,18,.92));border:1px solid rgba(233,185,73,.55);border-radius:6px;padding:7px 14px 9px;box-shadow:0 4px 16px rgba(0,0,0,.6)}
+.bossline{bottom:calc(var(--barh) + 90px);left:50%;transform:translateX(-50%);width:min(86%,520px);display:flex;flex-direction:column;gap:2px;font-size:15px;font-weight:700;color:#fff;background:linear-gradient(rgba(22,16,38,.92),rgba(10,8,18,.92));border:1px solid rgba(233,185,73,.55);border-radius:6px;padding:7px 14px 9px;box-shadow:0 4px 16px rgba(0,0,0,.6)}
 .bossline .who{font-size:12px;color:var(--gold-2);letter-spacing:.1em}
 .alert{top:27%;left:50%;transform:translateX(-50%);width:max-content;max-width:90%;text-align:center;line-height:1.35;font-size:clamp(18px,3vw,26px);font-weight:900;color:var(--gold-2);background:rgba(10,8,18,.55);border-radius:8px;padding:4px 12px;text-shadow:0 0 2px #000,0 2px 8px #000,0 0 18px rgba(0,0,0,.8)}
 .alert.danger{color:#ff9aa4}
@@ -43,9 +47,9 @@
 .endseed b{color:var(--fg);font-variant-numeric:tabular-nums}
 .tr{top:10px;right:10px;font-size:12px;color:var(--muted);text-align:right;background:rgba(10,8,18,.6);border-radius:7px;padding:3px 8px;display:flex;flex-direction:column;gap:1px}
 .tr b{color:var(--fg);font-variant-numeric:tabular-nums}
-.toast{bottom:78px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:4px}
+.toast{bottom:calc(var(--barh) + 10px);left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:4px}
 .toast div{background:rgba(70,14,26,.86);border:1px solid var(--ng);color:#ffd4d9;font-weight:700;font-size:13px;border-radius:8px;padding:3px 10px;white-space:nowrap}
-.bar{bottom:10px;left:50%;transform:translateX(-50%);display:flex;gap:6px;pointer-events:auto}
+.bar{bottom:9px;left:50%;transform:translateX(-50%);display:flex;gap:6px;pointer-events:auto}
 .slot{position:relative;width:56px;height:56px;border-radius:10px;border:1px solid #6b5a2c;background:linear-gradient(#2a2337,#16121f);color:var(--fg);font:inherit;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2px;overflow:hidden}
 .slot b{font-size:12px;line-height:1.15;text-align:center}
 .slot kbd{position:absolute;top:2px;left:4px;font-size:10.5px;color:var(--gold-2);font-family:var(--f-body)}

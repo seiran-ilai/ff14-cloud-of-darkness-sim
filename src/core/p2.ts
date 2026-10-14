@@ -115,10 +115,11 @@ export const crossCells = (k: number): Cell[] => {
 
 // ---------- 座位（混沌迫近換位後，改坐別人的位置） ----------
 
-export interface Seated { al: Alliance; role: Role; seat?: { al: Alliance; role: Role } }
+export interface Seated { al: Alliance; role: Role; seat?: { al: Alliance; role: Role }; seatHome?: Vec }
 /** 目前坐的座位：換位前就是自己 */
 export const seatOf = (e: Seated): { al: Alliance; role: Role } => e.seat ?? { al: e.al, role: e.role };
 export const zoneE = (e: Seated): Zone => { const s = seatOf(e); return zoneOf(s.al, s.role); };
-export const homeE = (e: Seated): Vec => { const s = seatOf(e); return p2Home(s.al, s.role); };
+/** 目前的定點：換位後有指定的定點（seatHome）就用它，否則照座位 */
+export const homeE = (e: Seated): Vec => { if (e.seatHome) return e.seatHome; const s = seatOf(e); return p2Home(s.al, s.role); };
 /** 站位用的職能（外場的分攤、散開、塔都依座位的職能） */
 export const roleE = (e: Seated): Role => seatOf(e).role;

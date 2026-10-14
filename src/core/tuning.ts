@@ -19,7 +19,7 @@ export const TELE_SHOW = 2;
 export const SIM_DT = 1 / 120;
 /** 鏡頭：固定視角時畫面中心到邊的距離、跟隨時的距離（m） */
 export const VIEW_FIXED = 40;
-/** 固定鏡頭的中心往北移：場地北緣（王、P1 單手安全區）不要被上方的詠唱條擋住 */
+/** 固定鏡頭的中心往北移：場地北緣（王、P1 單手安全區）不要被上方的詠唱條擋住（技能列在場地下方另一條，不會擋） */
 export const VIEW_FIXED_CY = -7;
 export const VIEW_FOLLOW = 21;
 /** 跟隨鏡頭的距離（畫面中心到邊幾公尺）：近＝原本的放大、中、遠＝看得到場外邪眼、破片雲 */

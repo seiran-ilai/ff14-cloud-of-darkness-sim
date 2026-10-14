@@ -69,7 +69,7 @@ export function setField(G: GameState, t: number, f: Field): void {
       G.round = f === 'round';
       G.ents.forEach((e) => {
         const h = homePos(e.al, e.role);
-        Object.assign(e, { x: h.x, y: h.y, px: h.x, py: h.y, mt: { ...h }, ov: null, nav: undefined, p2r: undefined, seat: undefined, faceLock: null, forced: null, curse: undefined, mark: undefined });
+        Object.assign(e, { x: h.x, y: h.y, px: h.x, py: h.y, mt: { ...h }, ov: null, nav: undefined, p2r: undefined, seat: undefined, seatHome: undefined, faceLock: null, forced: null, curse: undefined, mark: undefined });
       });
     }
     G.hints = [];

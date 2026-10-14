@@ -67,6 +67,8 @@ export interface Entity {
   mark?: { kind: 'seed' | 'charge' | 'spread' | 'dive' | 'impale'; until: number };
   /** P3 華容道的座位（混沌迫近換位後改坐別人的位置）；沒有就是自己的 al／role */
   seat?: { al: Alliance; role: Role };
+  /** 換位後另外指定的定點（例如進格子的外場 MT：角落格往中間 2 格）；沒有就照座位 */
+  seatHome?: Vec;
   /** P2 Bot 刷新格子的狀態 */
   p2r?: { phase: 'idle' | 'out' | 'wait' | 'back'; at: number; cell: number; threshold: number; ret?: Vec };
 }

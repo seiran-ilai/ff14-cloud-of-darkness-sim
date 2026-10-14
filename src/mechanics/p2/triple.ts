@@ -16,8 +16,8 @@
 import { TRIPLE, TELE_SHOW } from '../../core/tuning';
 import { angOf, dist } from '../../core/geometry';
 import { hitHalf, hitCircle, hitRect } from '../../core/hit';
-import { rel, sbPos, sbFacing, zoneE, homeE, roleE, type Side } from '../../core/p2';
-import type { Role, Vec } from '../../core/constants';
+import { rel, sbPos, sbFacing, zoneE, zoneOf, homeE, roleE, type Side } from '../../core/p2';
+import { roleType, type Role, type Vec } from '../../core/constants';
 import { at, setCast, alertMsg, seqAdd, variant, type Entity, type Fix, type GameState } from '../../game/state';
 import { good, hurtPlayer, botHit } from '../../game/results';
 import { isBot } from '../../game/bots';
@@ -32,6 +32,19 @@ const SPREAD_A: Partial<Record<Role, number>> = { MT: -22.5, H2: 22.5, D1: -90, 
 const SPREAD_R = 4.3;
 /** 單手球：躲到沒球那半邊（r 乘上正負號） */
 const SAFE_POS: Partial<Record<Role, [number, number]>> = { MT: [2.5, 2.2], H2: [2.5, 4], D1: [0, 2.2], D3: [0, 4], D2: [-2.5, 2.2], D4: [-2.5, 4] };
+
+/**
+ * 這一擊用哪個職能的站位。換位前＝座位的職能；混沌迫近換位後的外場照小抄的「換位後」站位（イディル改）：
+ *   原本外場的 D2→外側西（＝D3 的位置）、D3→外側北（＝H2）、D4→外側東（＝D4）；
+ *   從格子出來的坦克→內側北（＝MT）、補師→內側西（＝D1）、DPS→內側東（＝D2）。
+ *   兩兩分攤：坦克＋原 D3、補師＋原 D2、DPS＋原 D4。
+ */
+export function tripleRole(e: Entity): Role {
+  const swapped = !!e.seat && (e.seat.al !== e.al || e.seat.role !== e.role);
+  if (!swapped || zoneE(e) === 'in') return roleE(e);
+  if (zoneOf(e.al, e.role) !== 'in') return ({ D2: 'D3', D3: 'H2', D4: 'D4' } as Partial<Record<Role, Role>>)[e.role] ?? roleE(e);
+  return ({ tank: 'MT', heal: 'D1', dps: 'D2' } as const)[roleType(e.role)];
+}
 
 /** 某座位在這一擊該站的位置（外場） */
 export function tripleSpot(side: Side, role: Role, kind: TripleKind): Vec {
@@ -85,8 +98,8 @@ export function triple(G: GameState, t0: number, noSniper = false): number {
       ([-1, 1] as Side[]).forEach((side) => {
         const kind = seqs[side][k];
         if (pzOf() === side) alertMsg(G, `第 ${k + 1} 擊`, 1.5);
-        G.ents.forEach((e) => { if (isBot(G, e) && !e.dead && zoneE(e) === side) e.mt = tripleSpot(side, roleE(e), kind); });
-        if (pzOf() === side && G.cfg.hint && !G.auto) G.hints = [{ ...tripleSpot(side, roleE(P), kind), r: 1, label: `第 ${k + 1} 擊` }];
+        G.ents.forEach((e) => { if (isBot(G, e) && !e.dead && zoneE(e) === side) e.mt = tripleSpot(side, tripleRole(e), kind); });
+        if (pzOf() === side && G.cfg.hint && !G.auto) G.hints = [{ ...tripleSpot(side, tripleRole(P), kind), r: 1, label: `第 ${k + 1} 擊` }];
       });
     });
     at(G, hit - TELE_SHOW, () => ([-1, 1] as Side[]).forEach((side) => {
@@ -117,7 +130,7 @@ export function triple(G: GameState, t0: number, noSniper = false): number {
 function resolve(G: GameState, s: Strike, tag: string, k: number, mineSide: boolean): void {
   const c = sbPos(s.side), P = G.player;
   const fixFor = (e: Entity): Fix => (zoneE(e) === s.side
-    ? { ...tripleSpot(s.side, roleE(e), s.kind), r: 1, label: NAME[s.kind] }
+    ? { ...tripleSpot(s.side, tripleRole(e), s.kind), r: 1, label: NAME[s.kind] }
     : { ...homeE(e), r: 0.8, label: '格子內偏本體側' });
   const fail = (e: Entity, why: string): void => {
     if (e.isPlayer) hurtPlayer(G, tag, `第 ${k + 1} 擊 ${why}`, false, fixFor(e));
@@ -140,7 +153,7 @@ function resolve(G: GameState, s: Strike, tag: string, k: number, mineSide: bool
       const inside = G.ents.filter((e) => !e.dead && hitCircle(e, ci, TRIPLE.pairR));
       if (inside.length >= 2 || failed.has(ci.t)) return;
       // 分攤人數不足：算在「該來分攤卻沒來的人」身上；找不到就算目標自己
-      const partner = G.ents.find((e) => PAIR[roleE(e)] === roleE(ci.t) && zoneE(e) === s.side);
+      const partner = G.ents.find((e) => PAIR[tripleRole(e)] === tripleRole(ci.t) && zoneE(e) === s.side);
       const who = partner && !partner.dead ? partner : ci.t;
       failed.add(who);
       fail(who, who === ci.t ? '分攤人數不足' : '沒進分攤');
