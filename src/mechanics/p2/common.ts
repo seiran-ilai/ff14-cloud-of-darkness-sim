@@ -51,17 +51,25 @@ export function outerGo(G: GameState, e: Entity, p: Vec): void {
 /**
  * 外場 Bot 沿環狀地板走到 to（平臺和環狀地板之間是空的，直線可能踩空）：
  * 每 15° 一個點，依距離估時間排程換目標。回傳預計到達時間。
+ * 外場有荊棘（種子放在平臺南北邊緣中間）時自動避開：沿環狀地板的外緣走，離開／回到平臺時
+ * 先經過平臺中線、平臺外緣（不從平臺南北邊緣中間直接切出去）。
+ * opt.R：沿著哪個半徑走；opt.via：先依序走過這些點再上環狀地板。
  */
-export function ringWalk(G: GameState, e: Entity, to: Vec, t: number): number {
-  const R = (P2.ring0 + P2.ring1) / 2;
-  const a0 = Math.atan2(e.y, e.x), a1 = Math.atan2(to.y, to.x);
+export function ringWalk(G: GameState, e: Entity, to: Vec, t: number, opt: { R?: number; via?: Vec[] } = {}): number {
+  const avoid = !!G.p2?.thorns.some((th) => th.cell < 0);
+  const R = opt.R ?? (avoid ? P2.ring1 - 0.6 : (P2.ring0 + P2.ring1) / 2);
+  const edgeVia = (p: Vec): Vec[] => { const y = Math.max(-2, Math.min(2, p.y)); return [{ x: p.x, y }, { x: Math.sign(p.x) * (P2.px1 - 0.6), y }]; };
+  const head = opt.via ?? (avoid && onPlatform(e) ? edgeVia(e) : []);
+  const tail = avoid && onPlatform(to) ? edgeVia(to).reverse() : [];
+  const start = head.length ? head[head.length - 1] : e, end = tail.length ? tail[0] : to;
+  const a0 = Math.atan2(start.y, start.x), a1 = Math.atan2(end.y, end.x);
   let d = a1 - a0;
   while (d > Math.PI) d -= 2 * Math.PI;
   while (d < -Math.PI) d += 2 * Math.PI;
   const n = Math.max(1, Math.ceil(Math.abs(d) / (Math.PI / 12)));
-  const pts: Vec[] = [];
+  const pts: Vec[] = [...head];
   for (let i = 1; i < n; i++) { const a = a0 + (d * i) / n; pts.push({ x: Math.cos(a) * R, y: Math.sin(a) * R }); }
-  pts.push(to);
+  pts.push(...tail, to);
   const v = RUN * SPRINT_MUL;
   let cur: Vec = { x: e.x, y: e.y }, when = t;
   // 中途有別的機制給了新的目標（e.mt 被換掉）就不再走下去
