@@ -162,6 +162,8 @@ export interface GameState {
   tl: boolean;
   seq: SeqItem[];
   stored: StoredKind | null;
+  /** 指定機制樣式（教學頁用，例如 { embrace: 'cover' }）；沒指定的照亂數 */
+  pick?: Record<string, string>;
   ff: boolean;
   /** 目前「擁有」Bot 回原位權的機制 */
   active?: object;
@@ -217,6 +219,12 @@ export function createState(cfg: Config, auto: boolean, rng: Rng, drill: Drill):
 
 // ---- 狀態小工具（機制檔共用） ----
 export const at = (G: GameState, t: number, fn: () => void): void => G.ev.at(t, fn);
+
+/**
+ * 機制樣式：rolled 是照亂數抽出的樣式；教學頁指定了 G.pick[key] 就改用指定的。
+ * 一定先抽亂數再覆蓋，亂數的使用順序不變（同種子仍是同一局）。
+ */
+export const variant = <T extends string>(G: GameState, key: string, rolled: T): T => (G.pick?.[key] as T | undefined) ?? rolled;
 export const setCast = (G: GameState, name: string, dur: number, tip?: string): void => { G.cast = { name, start: G.t, dur, tip }; G.sfx.push('cast'); };
 export const say = (G: GameState, text: string, dur = 4): void => { G.line = { text, until: G.t + dur }; };
 export const alertMsg = (G: GameState, text: string, dur = 2, danger?: boolean): void => {

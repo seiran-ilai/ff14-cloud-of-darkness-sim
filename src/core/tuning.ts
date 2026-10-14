@@ -98,6 +98,9 @@ export const PETRIFY = {
   /** 邪眼在場外多遠、南北間距（估計） */
   eyeOut: 2.5,
   eyeY: 4.5,
+  /** 角落面壁的位置：王最左／最右側（翅膀盲區）、魔法陣北角切平線下方（估計） */
+  cornerX: 11,
+  cornerY: -13.5,
 } as const;
 
 export const AERO = {

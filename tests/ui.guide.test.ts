@@ -58,6 +58,42 @@ describe('機制教學頁', () => {
     expect(s.querySelector('.gtime')!.textContent).not.toContain('已暫停');
   });
 
+  it('有多種樣式的機制：選樣式後照那個樣式播放，並顯示那個樣式的預兆與應對', () => {
+    const s = document.getElementById('k-embrace')!;
+    expect(s.querySelectorAll('[data-vk="embrace"]').length).toBe(2); // 包覆、撈起（沒有隨機）
+    for (const [v, hand] of [['cover', '右手心向下'], ['scoop', '右手心向上']] as const) {
+      (s.querySelector(`[data-vv="${v}"]`) as HTMLElement).click();
+      expect(s.classList.contains('playing')).toBe(true);
+      // 兩種樣式的說明都一直列出來，選到的加框
+      expect(s.querySelectorAll('.gvopt').length).toBe(2);
+      expect(s.querySelector('.gvopt.sel')!.textContent).toContain(hand);
+      frames(60 * 2);
+      expect(s.querySelector('.gcap')!.textContent).toContain(hand);
+    }
+    // 其他有樣式的單元也有選擇列
+    ['blade', 'petrify', 'p3tower', 'p3fear', 'p3charge', 'p3spin', 'p3swap'].forEach((k) => expect(document.querySelector(`#k-${k} [data-var] [data-vk]`)).not.toBeNull());
+  });
+
+  it('超石化：兩種處理方式都能播，角落面壁時大家跑到角落、沒人被石化', () => {
+    const s = document.getElementById('k-petrify')!;
+    expect(s.querySelectorAll('[data-vk="petrifyHow"]').length).toBe(2);
+    (s.querySelector('[data-vv="corner"]') as HTMLElement).click();
+    expect(s.querySelector('.gvopt.sel')!.textContent).toContain('角落');
+    frames(60 * 8);
+    expect(s.querySelector('.gtime')!.textContent).toMatch(/0:0\d|結束/);
+  });
+
+  it('一段裡有好幾個機制：選「機制」從那個機制開始播；每個機制都有「到模擬器練這個」', () => {
+    const s = document.getElementById('k-opener')!;
+    (s.querySelector('[data-vk="step"][data-vv="暗之大泛濫"]') as HTMLElement).click();
+    // 從那個機制前 2 秒開始（＋倒數 0.8 秒）
+    frames(60 * 4);
+    expect(s.querySelector('.gcap')!.textContent).toContain('暗之大泛濫');
+    expect(document.querySelectorAll('details.mi [data-go]').length).toBe(document.querySelectorAll('details.mi').length);
+    // 沒有暫停、換一局、重播按鈕（點畫面暫停、播完自動重播）
+    expect(document.querySelector('[data-a]')).toBeNull();
+  });
+
   it('換座位、速度、下拉選單跳到 P3', () => {
     (document.querySelector('#roleSeg [data-v="MT"]') as HTMLButtonElement).click();
     expect(document.getElementById('gnote')!.textContent).toContain('MT');

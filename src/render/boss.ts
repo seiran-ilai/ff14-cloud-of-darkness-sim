@@ -103,8 +103,8 @@ export function drawOrbAndEyes(c: CanvasRenderingContext2D, G: GameState): void 
   }
   if (G.extra.eyes && G.t < G.extra.eyes.until) {
     const s = G.extra.eyes.side;
-    [-4.5, 4.5].forEach((y) => {
-      const x = s * (R + 2.5);
+    // 側邊 2 個＋正面（王的北邊）1 個
+    ([[s * (R + 2.5), -4.5], [s * (R + 2.5), 4.5], [0, -(R + 2.5)]] as const).forEach(([x, y]) => {
       c.fillStyle = `rgba(255,93,108,${0.25 + 0.15 * Math.sin(G.t * 6)})`; circle(c, x, y, 3.2); c.fill();
       c.fillStyle = '#2a0d16'; circle(c, x, y, 2.2); c.fill();
       c.strokeStyle = '#ff5d6c'; c.lineWidth = px(3); c.stroke();

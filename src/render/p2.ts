@@ -111,14 +111,18 @@ export function drawP2Bosses(c: CanvasRenderingContext2D, G: RenderState): void 
       const f = dirV(aura.face!);
       c.strokeStyle = '#ffd36b'; c.lineWidth = px(3);
       [1, -1].forEach((s) => { c.beginPath(); c.moveTo(f.x * 4 * s, f.y * 4 * s); c.lineTo(f.x * 7 * s, f.y * 7 * s); c.stroke(); });
-      // 旋轉方向：沿面向往順／逆時針畫一段弧與箭頭
-      const a0 = aura.face! - Math.PI / 2, a1 = a0 + aura.dir! * 0.9;
-      c.strokeStyle = 'rgba(255,211,107,.85)'; c.lineWidth = px(2.5);
-      c.beginPath(); c.arc(0, 0, 6, a0, a1, aura.dir! < 0); c.stroke();
-      // 箭頭：尖端沿切線往旋轉方向，底邊沿半徑方向
-      const rx = Math.cos(a1), ry = Math.sin(a1), tx = -ry * aura.dir!, ty = rx * aura.dir!, px0 = rx * 6, py0 = ry * 6;
-      c.fillStyle = '#ffd36b';
-      c.beginPath(); c.moveTo(px0 + tx * 1.4, py0 + ty * 1.4); c.lineTo(px0 + rx * 0.8, py0 + ry * 0.8); c.lineTo(px0 - rx * 0.8, py0 - ry * 0.8); c.closePath(); c.fill();
+      // 旋轉方向：王周圍一整圈的環形箭頭（整圈＋等間隔的箭頭，慢慢往旋轉方向轉）；順時針橘色、逆時針藍色
+      const RR = 6, col = aura.dir! > 0 ? '#ff9b3d' : '#5cc8ff';
+      c.strokeStyle = col; c.globalAlpha = 0.85; c.lineWidth = px(2.5);
+      circle(c, 0, 0, RR); c.stroke();
+      c.globalAlpha = 1;
+      c.fillStyle = col;
+      for (let i = 0; i < 6; i++) {
+        // 箭頭：尖端沿切線往旋轉方向，底邊沿半徑方向
+        const a = (i * Math.PI) / 3 + aura.dir! * G.t * 0.8;
+        const rx = Math.cos(a), ry = Math.sin(a), tx = -ry * aura.dir!, ty = rx * aura.dir!, px0 = rx * RR, py0 = ry * RR;
+        c.beginPath(); c.moveTo(px0 + tx * 1.4, py0 + ty * 1.4); c.lineTo(px0 + rx * 0.8, py0 + ry * 0.8); c.lineTo(px0 - rx * 0.8, py0 - ry * 0.8); c.closePath(); c.fill();
+      }
     }
   }
   c.fillStyle = 'rgba(120,80,200,.18)'; circle(c, 0, 0, 4.5); c.fill();

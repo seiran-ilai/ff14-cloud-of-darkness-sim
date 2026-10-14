@@ -1,6 +1,6 @@
 // 機制目錄：隨機練習用。每個機制知道自己屬於哪個階段、要什麼場地，以及怎麼從任意時間點排一次（seg）。
 import type { BladeMode, GameState } from '../game/state';
-import { at, alertMsg, seqAdd } from '../game/state';
+import { at, alertMsg, seqAdd, variant } from '../game/state';
 import { homePos } from '../core/positions';
 import { blade } from '../mechanics/blade';
 import { enterP2 } from '../mechanics/p2/enter';
@@ -47,7 +47,7 @@ export const CATALOG: MechEntry[] = [
   // 單練用較短的詛咒秒數（實戰 7／33／97 秒）
   { id: 'p3curse', phase: 'p3', name: '波動詛咒', field: 'p3', seg: (G, t0) => curse(G, t0, [7, 12, 17]) + 1 },
   { id: 'p3seed', phase: 'p3', name: '種子彈＋荊棘叢生', field: 'p3', seg: (G, t0) => { const e = seeds(G, t0) + 3; return thornTether(G, e) + 3; } },
-  { id: 'p3charge', phase: 'p3', name: '凝聚式／分散式波動炮', field: 'p3', seg: (G, t0) => chargeOrSpread(G, t0, G.rng.chance(0.5) ? 'charge' : 'spread') + 3 },
+  { id: 'p3charge', phase: 'p3', name: '凝聚式／分散式波動炮', field: 'p3', seg: (G, t0) => chargeOrSpread(G, t0, variant(G, 'charge', G.rng.chance(0.5) ? 'charge' : 'spread')) + 3 },
   { id: 'p3spin', phase: 'p3', name: '迴旋式＋跳躍波動炮', field: 'p3', seg: (G, t0) => { jump(G, t0 + P3.spin.cast - 1); return spin(G, t0) + 3; } },
   { id: 'p3swap', phase: 'p3', name: '混沌迫近（換位）', field: 'p3', seg: (G, t0) => swap(G, t0) + 2 },
   { id: 'p3dive', phase: 'p3', name: '潛地式波動炮', field: 'p3', seg: (G, t0) => { triple(G, t0 + 2, true); return dive(G, t0) + 3; } },

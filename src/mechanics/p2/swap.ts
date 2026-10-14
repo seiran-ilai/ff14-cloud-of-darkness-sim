@@ -17,7 +17,7 @@ import { roleType, type Alliance, type Role, type Vec } from '../../core/constan
 import { cellAt, cellUnder, center, rel, zoneE, roleE, homeE, seatOf, zoneOf, CORNERS, cornerOfCell, type Cell, type Side } from '../../core/p2';
 import { dist } from '../../core/geometry';
 import { hitCircle } from '../../core/hit';
-import { at, setCast, alertMsg, say, seqAdd, type Entity, type GameState } from '../../game/state';
+import { at, setCast, alertMsg, say, seqAdd, variant, type Entity, type GameState } from '../../game/state';
 import { good } from '../../game/results';
 import { isBot } from '../../game/bots';
 import { entIndex } from '../../game/p2state';
@@ -57,7 +57,7 @@ export function swap(G: GameState, t0: number): number {
   const tag = '混沌迫近';
   seqAdd(G, t0, '混沌迫近（換位）');
   const tR = t0 + P3.swap.cast;
-  const north = G.rng.chance(0.5);
+  const north = variant(G, 'swap', G.rng.chance(0.5) ? 'north' : 'south') === 'north';
   at(G, t0, () => {
     setCast(G, '混沌迫近', P3.swap.cast, `換位：外場遠的 3 人和內場${north ? '北' : '南'}端角落互換、外場近的 3 人東西互換；換位後坦克記得挑釁`);
     busy(G, tR + 3);
@@ -135,20 +135,27 @@ export function dive(G: GameState, t0: number): number {
     }
     if (targets.includes(G.player)) alertMsg(G, '你被潛地式點名：順時針跑一圈', 2.5, true);
   });
-  // 被點的人沿外圈順時針跑：到一個角落格就換下一個
+  // 被點的人沿外圈順時針跑：到一個角落格就換下一個；最後一段（回到起點角落）攻略是「回定點」：
+  // 自己的定點在最後一段路上（例如角落格南邊那格）就直接停在定點，不跑過頭再折返
   at(G, tS, () => {
     G.hints = [];
     targets.forEach((tg) => {
       if (!isBot(G, tg)) return;
-      const k0 = LOOP.indexOf(cornerOfCell(cellUnder(homeE(tg))!));
+      const home = homeE(tg), homeCell = cellUnder(home)!;
+      const k0 = LOOP.indexOf(cornerOfCell(homeCell));
+      const cornerAt = (s: number): Cell => { const [i, j] = CORNERS[LOOP[(k0 + s) % 4]]; return cellAt(i, j)!; };
+      // 最後一段：從前一個角落到起點角落，定點在這條路上（同一行／列、在兩個角落之間）
+      const from = cornerAt(3), to = cornerAt(4);
+      const between = (a: number, b: number, x: number): boolean => x >= Math.min(a, b) && x <= Math.max(a, b);
+      const homeOnLast = (homeCell.i === to.i && from.i === to.i && between(from.j, to.j, homeCell.j))
+        || (homeCell.j === to.j && from.j === to.j && between(from.i, to.i, homeCell.i));
+      const target = (s: number): Vec => (s === 4 && homeOnLast ? home : center(cornerAt(s)));
       let step = 1, sent = 0;
       const go = (): void => {
         if (tg.dead || step > 4 || !G.p2) return;
-        const [ci, cj] = CORNERS[LOOP[(k0 + step) % 4]];
-        const c = cellAt(ci, cj)!;
-        if (cellUnder(tg) === c && dist(tg, center(c)) < 0.3) step++;
+        if (dist(tg, target(step)) < 0.3) step++;
         // 目標換了才重新下指令（每次下指令都會重算路，太頻繁會一直退回格子中央）
-        if (step <= 4 && sent !== step) { const [ni, nj] = CORNERS[LOOP[(k0 + step) % 4]]; p2Goto(G, tg, center(cellAt(ni, nj)!)); sent = step; }
+        if (step <= 4 && sent !== step) { p2Goto(G, tg, target(step)); sent = step; }
         tg.buffs.sprint = G.t + 2;
         at(G, G.t + 0.15, go);
       };

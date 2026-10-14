@@ -41,6 +41,14 @@
 .galert b{color:var(--gold-2)}
 .gline small{display:block;font-size:11px;color:var(--gold-2);letter-spacing:.1em}
 .gctrl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+/* 樣式選擇：每組一排按鈕，下面是選到的樣式的預兆與應對 */
+.gvar{display:flex;flex-direction:column;gap:8px;background:var(--panel-2);border-radius:10px;padding:8px 10px}
+.gvrow{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.gvinfo{display:flex;flex-direction:column;gap:6px}
+.gvopt{display:flex;flex-direction:column;gap:3px;border:1px solid transparent;border-radius:8px;padding:5px 8px}
+.gvopt>b{font-size:13px;color:var(--gold-2)}
+.gvopt.sel{border-color:var(--gold);background:#231c12}
+.gmigo{margin-top:6px}
 .gtext{display:flex;flex-direction:column;gap:10px;min-width:0}
 .gtext .btext{font-size:14px}
 .gtext .milist{gap:8px}

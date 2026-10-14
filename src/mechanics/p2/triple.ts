@@ -18,7 +18,7 @@ import { angOf, dist } from '../../core/geometry';
 import { hitHalf, hitCircle, hitRect } from '../../core/hit';
 import { rel, sbPos, sbFacing, zoneE, homeE, roleE, type Side } from '../../core/p2';
 import type { Role, Vec } from '../../core/constants';
-import { at, setCast, alertMsg, seqAdd, type Entity, type Fix, type GameState } from '../../game/state';
+import { at, setCast, alertMsg, seqAdd, variant, type Entity, type Fix, type GameState } from '../../game/state';
 import { good, hurtPlayer, botHit } from '../../game/results';
 import { isBot } from '../../game/bots';
 import type { TripleKind } from '../../game/p2state';
@@ -47,7 +47,7 @@ function sequence(G: GameState, noSniper: boolean): TripleKind[] {
   // 潛地式時的三重暗之戰技（攻略：只有分攤）：第一擊照規則是單手球，之後兩擊都是雙手球
   if (noSniper) return [one(), 'B', 'B'];
   // 混沌迫近後不會用狙擊式（黑霧）
-  const other: TripleKind = noSniper || G.rng.chance(0.5) ? 'B' : 'C';
+  const other = variant<TripleKind>(G, 'triple', G.rng.chance(0.5) ? 'B' : 'C');
   return G.rng.chance(0.5) ? [one(), one(), other] : [one(), other, one()];
 }
 

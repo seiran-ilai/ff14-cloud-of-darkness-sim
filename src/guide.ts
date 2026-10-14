@@ -11,6 +11,7 @@ import { DRILLS } from './drills';
 import { singles } from './drills/singles';
 import { p3singles } from './drills/p3singles';
 import { mechInfoHtml } from './drills/mechinfo';
+import { VARIANTS, type VariantGroup } from './drills/variants';
 import { seatText, unrelated } from './drills/relevance';
 import { Session } from './game/session';
 import { newInput } from './game/simulation';
@@ -39,12 +40,52 @@ let playing = true, speed = 1, endWait = 0;
 const sec = (k: string): HTMLElement => $(`k-${k}`);
 const q = <T extends HTMLElement = HTMLElement>(k: string, cls: string): T => sec(k).querySelector<T>(`.${cls}`)!;
 
-function restart(newSeed = false): void {
+/**
+ * 一段裡有好幾個機制（例如 P1 的暗之刃 → 暗之大泛濫）：可以選「看哪個機制」，動態圖從那個機制開始播
+ * （前面照攻略快轉）。值是時間軸項目要包含的文字。
+ */
+const STEPS: Record<string, [string, string][]> = {
+  opener: [['暗之刃', '暗之刃'], ['暗之大泛濫', '暗之大泛濫']],
+  blade: [['暗之刃', '暗之刃'], ['超賦', '超賦'], ['超賦後的暗之刃', '（超賦）']],
+  flareholy: [['核爆', '核爆'], ['黑暗神聖', '黑暗神聖']],
+  p2open: [['暗之大泛濫', '暗之大泛濫'], ['深暗領域', '深暗領域'], ['三重暗之戰技＋波動球', '三重暗之戰技']],
+  p3seed: [['種子彈', '種子彈'], ['荊棘叢生', '荊棘叢生']],
+};
+const STEP_KEY = 'step';
+
+/** 每段的選擇列：「看哪個機制」＋各組樣式 */
+const groupsOf = (k: string): VariantGroup[] => [
+  ...(STEPS[k] ? [{ key: STEP_KEY, label: '機制', opts: STEPS[k].map(([label, value]) => ({ value, label, tell: '', how: '' })) }] : []),
+  ...(VARIANTS[k] ?? []),
+];
+
+/** 每段選的項目（key → value）；預設每組第一個 */
+const picks: Record<string, Record<string, string>> = {};
+const pickOf = (k: string): Record<string, string> =>
+  (picks[k] ??= Object.fromEntries(groupsOf(k).map((g) => [g.key, g.opts[0].value])));
+
+/** 選擇列：每組一排按鈕；樣式的預兆與應對全部列出，選到的那個加框 */
+function renderVariants(k: string): void {
+  const box = sec(k).querySelector<HTMLElement>('[data-var]');
+  if (!box) return;
+  const cur = pickOf(k);
+  box.innerHTML = groupsOf(k).map((g) => {
+    const chips = g.opts.map((o) => `<button class="chip" data-vk="${g.key}" data-vv="${o.value}" aria-pressed="${cur[g.key] === o.value}">${o.label}</button>`).join('');
+    const info = g.key === STEP_KEY ? '' : `<div class="gvinfo">${g.opts.map((o) => `<div class="gvopt${cur[g.key] === o.value ? ' sel' : ''}"><b>${o.label}</b><dl class="midl"><dt class="tell">預兆</dt><dd>${o.tell}</dd><dt class="how">應對</dt><dd>${o.how}</dd></dl></div>`).join('')}</div>`;
+    return `<div class="gvrow"><span class="lbl">${g.label}</span><span class="grp">${chips}</span></div>${info}`;
+  }).join('');
+}
+
+function restart(): void {
   if (!active) return;
-  if (newSeed) seed = Math.floor(Math.random() * 1e9);
   cfg.drill = active;
+  const { [STEP_KEY]: step, ...pick } = pickOf(active);
+  session.pick = pick;
   session.startAt = 0;
-  const G = session.newGame(true, seed);
+  // 選了「看哪個機制」：先排一次找出那個機制在時間軸的時間，再從那裡開始（前面照攻略快轉）
+  let G = session.newGame(true, seed, 0);
+  const at = step ? G.seq.find((s) => s.label.includes(step))?.t ?? 0 : 0;
+  if (at > 0) G = session.newGame(true, seed, at);
   G.countT = 0.8;
   endWait = 0;
 }
@@ -62,6 +103,21 @@ function activate(k: string): void {
   ($('gsel') as HTMLSelectElement).value = k;
 }
 
+/** 每個機制在模擬器裡最適合練的項目（P1 開場、P3 開場這兩段裡的機制就練那一段） */
+const MECH_DRILL: Record<string, string> = {
+  暗之刃: 'blade', 暗之大泛濫: 'opener', 暗之泛濫: 'run:one:p2', 陰冷擁抱: 'embrace', 齊射式波動炮: 'volley', 核爆: 'flareholy', 黑暗神聖: 'flareholy',
+  連射式波動炮: 'beam', 飆風: 'aero', 極死: 'death', 超賦: 'blade', 超石化: 'petrify',
+  深暗領域: 'p2open', 三重暗之戰技: 'p3tower', 波動球: 'p3tower', 恐懼之雲: 'p3fear', 波動詛咒: 'p3curse', 種子彈: 'p3seed', 荊棘叢生: 'p3seed',
+  '暗之泛濫（小王）': 'p3interrupt', 凝聚式波動炮: 'p3charge', 分散式波動炮: 'p3charge', 磔殺: 'p3impale', 迴旋式波動炮: 'p3spin', 跳躍波動炮: 'p3spin',
+  混沌迫近: 'p3swap', 潛地式波動炮: 'p3dive', 雲散: 'run:one:p3',
+};
+const drillForMech = (n: string, sectionKey: string): string =>
+  (sectionKey === 'opener' || sectionKey === 'p2open' ? sectionKey : MECH_DRILL[n] ?? sectionKey);
+
+/** 機制說明卡（全部展開）＋「到模擬器練這個」 */
+const mechCard = (n: string, sectionKey: string): string =>
+  mechInfoHtml(n, true).replace('</details>', `<button class="btn ghost sm gmigo" data-go="${drillForMech(n, sectionKey)}">到模擬器練這個</button></details>`);
+
 function sectionHtml(k: string): string {
   const D = DRILLS[k], info = D.info ?? [];
   return `<section class="gsec card" id="k-${k}" data-k="${k}">
@@ -72,16 +128,15 @@ function sectionHtml(k: string): string {
           <div class="gtop"><div class="gcap"></div><span class="gtime"></span></div>
           <div class="gbot"><span class="galert"></span></div>
           <div class="gidle">捲到這一段就會播放</div></div>
+        ${groupsOf(k).length ? `<div class="gvar" data-var></div>` : ''}
         <div class="gctrl">
-          <button class="btn sm" data-a="play">暫停</button>
-          <button class="btn ghost sm" data-a="re">重播</button>
-          <button class="btn ghost sm" data-a="new" title="換一局：手勢、點名、方向會不一樣">換一局</button>
-          <button class="btn ghost sm" data-a="go">到模擬器練這個</button>
+          <button class="btn ghost sm" data-go="${k}">到模擬器練這個</button>
+          <span class="muted">點畫面＝暫停／播放・播完自動重播</span>
         </div>
       </div>
       <div class="gtext">
         ${D.brief ? `<div class="btext open">${D.brief}</div>` : ''}
-        ${info.length ? `<div class="mihead"><span>機制說明（效果 → 預兆 → 應對）</span></div><div class="milist">${info.map((n) => mechInfoHtml(n, true)).join('')}</div>` : ''}
+        ${info.length ? `<div class="mihead"><span>機制說明（效果 → 預兆 → 應對）</span></div><div class="milist">${info.map((n) => mechCard(n, k)).join('')}</div>` : ''}
       </div>
     </div></section>`;
 }
@@ -134,7 +189,6 @@ function updCaption(): void {
 
 function togglePlay(): void {
   playing = !playing;
-  document.querySelectorAll('[data-a="play"]').forEach((x) => { x.textContent = playing ? '暫停' : '播放'; });
 }
 
 let last = performance.now();
@@ -152,6 +206,7 @@ function frame(now: number): void {
 }
 
 renderPage();
+KEYS.forEach(renderVariants);
 renderSeat();
 const renderSpeed = (): void => seg($('gSpeed'), SPEEDS, speed, (v) => { speed = +v; renderSpeed(); }, (v) => `${v}x`);
 renderSpeed();
@@ -172,20 +227,23 @@ $('gbody').onclick = (e) => {
     if (k !== active) { activate(k); if (!playing) togglePlay(); } else togglePlay();
     return;
   }
-  const b = t.closest<HTMLElement>('[data-a]');
-  if (!b) return;
-  const k = b.closest<HTMLElement>('.gsec')!.dataset.k!;
-  activate(k);
-  const act = b.dataset.a;
-  if (act === 'play') togglePlay();
-  else if (act === 're') restart();
-  else if (act === 'new') restart(true);
-  else if (act === 'go') {
-    // 帶著座位與這個練習回到模擬器
+  // 到模擬器練這個：帶著座位與練習項目回到模擬器
+  const go = t.closest<HTMLElement>('[data-go]');
+  if (go) {
     const c = loadConfig();
-    Object.assign(c, { drill: k, al: cfg.al, role: cfg.role });
+    Object.assign(c, { drill: go.dataset.go!, al: cfg.al, role: cfg.role });
     saveConfig(c);
     location.href = './index.html';
+    return;
+  }
+  // 選機制／樣式：這段改播指定的
+  const v = t.closest<HTMLElement>('[data-vk]');
+  if (v) {
+    const k = v.closest<HTMLElement>('.gsec')!.dataset.k!;
+    pickOf(k)[v.dataset.vk!] = v.dataset.vv!;
+    renderVariants(k);
+    if (k === active) restart(); else activate(k);
+    if (!playing) togglePlay();
   }
 };
 

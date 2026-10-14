@@ -10,7 +10,7 @@ import { P3, HIT, TELE_SHOW } from '../../core/tuning';
 import { cellUnder, cellPath, center, homeE, zoneE, roleE, rel, type Cell } from '../../core/p2';
 import type { Vec } from '../../core/constants';
 import { hitRing, hitLine } from '../../core/hit';
-import { at, setCast, alertMsg, say, seqAdd, type Entity, type Fix, type GameState } from '../../game/state';
+import { at, setCast, alertMsg, say, seqAdd, variant, type Entity, type Fix, type GameState } from '../../game/state';
 import { good } from '../../game/results';
 import { isBot } from '../../game/bots';
 import { cornerMembers, zoneCells, rearrange } from '../../game/p3plan';
@@ -56,7 +56,7 @@ function crossSpot(e: Entity, side: -1 | 1): Vec {
 
 export function fear(G: GameState, t0: number, forced?: FearKind): number {
   const tag = '恐懼之雲';
-  const kind: FearKind = forced ?? (G.rng.chance(0.5) ? 'ring' : 'cross');
+  const kind: FearKind = forced ?? variant<FearKind>(G, 'fear', G.rng.chance(0.5) ? 'ring' : 'cross');
   const tR = t0 + P3.fear.cast;
   seqAdd(G, t0, `恐懼之雲（${NAME[kind]}）`);
   const fixFor = (e: Entity): Fix => {

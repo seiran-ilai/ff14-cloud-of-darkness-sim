@@ -13,7 +13,7 @@ import { P3 } from '../../core/tuning';
 import { center, rel, sbFacing, zoneE, homeE, type Cell, type Side } from '../../core/p2';
 import { hitRect, hitFan } from '../../core/hit';
 import type { Vec } from '../../core/constants';
-import { at, setCast, alertMsg, say, seqAdd, type Entity, type GameState } from '../../game/state';
+import { at, setCast, alertMsg, say, seqAdd, variant, type Entity, type GameState } from '../../game/state';
 import { good } from '../../game/results';
 import { isBot } from '../../game/bots';
 import { dodge, type Hazard } from '../../game/p3plan';
@@ -26,7 +26,7 @@ const spinHit = (p: Vec, a: number, hb?: number): boolean =>
 export function spin(G: GameState, t0: number): number {
   const tag = '迴旋式波動炮';
   seqAdd(G, t0, '迴旋式波動炮');
-  const face = G.rng.chance(0.5) ? Math.PI / 2 : -Math.PI / 2, dir = G.rng.chance(0.5) ? 1 : -1;
+  const face = G.rng.chance(0.5) ? Math.PI / 2 : -Math.PI / 2, dir = variant(G, 'spinDir', G.rng.chance(0.5) ? 'cw' : 'ccw') === 'cw' ? 1 : -1;
   const hits = [0, 1, 2, 3, 4].map((k) => ({ t: t0 + P3.spin.cast + k * P3.spin.gap, a: face + dir * k * P3.spin.step }));
   const end = hits[4].t;
   at(G, t0, () => {
@@ -67,7 +67,7 @@ const SIDE: [number, number][] = [[-3, -3.5], [-3, 3.5], [-1.5, -4], [-1.5, 4], 
 
 export function jump(G: GameState, t0: number, order?: JumpOrder): number {
   const tag = '跳躍波動炮';
-  const ord: JumpOrder = order ?? (G.rng.chance(0.5) ? 'frontFirst' : 'sideFirst');
+  const ord: JumpOrder = order ?? variant<JumpOrder>(G, 'jump', G.rng.chance(0.5) ? 'frontFirst' : 'sideFirst');
   seqAdd(G, t0, ord === 'frontFirst' ? '正側跳躍波動炮（小王）' : '側正跳躍波動炮（小王）');
   const t1 = t0 + 4, t2 = t1 + P3.jump.gap;
   const sbAt = (side: Side): Vec => rel(side, P3.jump.f, 0);

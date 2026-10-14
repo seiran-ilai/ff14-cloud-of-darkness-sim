@@ -1,6 +1,6 @@
 // 單一機制練習。每項都有 seg(G, t0) → 結束時間，可以串成「弱點練習」。
 import type { BladeMode, Drill, GameState, StoredKind } from '../game/state';
-import { at, seqAdd } from '../game/state';
+import { at, seqAdd, variant } from '../game/state';
 import { EMBRACE } from '../core/tuning';
 import { embraceCast } from '../mechanics/embrace';
 import { volley } from '../mechanics/volley';
@@ -74,8 +74,8 @@ export const singles: Record<string, SingleDrill> = {
     info: ['暗之刃', '超賦', '飆風', '極死'],
     seg(G, t0) {
       const { rng } = G;
-      const k: StoredKind = rng.chance(0.5) ? 'aero' : 'death';
-      const m1 = rng.pickOne<BladeMode>(['L', 'R', 'B']);
+      const k = variant<StoredKind>(G, 'stored', rng.chance(0.5) ? 'aero' : 'death');
+      const m1 = variant<BladeMode>(G, 'blade', rng.pickOne<BladeMode>(['L', 'R', 'B']));
       blade(G, t0, m1);
       seqAdd(G, t0, '暗之刃');
       enhance(G, t0 + 6, k);
