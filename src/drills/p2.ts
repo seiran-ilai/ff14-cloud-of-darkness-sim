@@ -15,12 +15,11 @@ import { fear } from '../mechanics/p2/fear';
 import { curse } from '../mechanics/p2/curse';
 import { seeds, thornTether, sbDeluge } from '../mechanics/p2/seeds';
 import { chargeOrSpread, type ChargeKind } from '../mechanics/p2/charge';
-import { spin, jump } from '../mechanics/p2/spin';
+import { spin, jump, spinJumpAt } from '../mechanics/p2/spin';
 import { swap, dive, impale, vanish } from '../mechanics/p2/swap';
 import { deluge } from '../mechanics/deluge';
 import { allSettle } from '../mechanics/p2/common';
 import { flowHtml } from './mechinfo';
-import { P3 } from '../core/tuning';
 
 /**
  * P3 華容道開場：暗之大泛濫進 P3 → 深暗領域 → 三重暗之戰技＋波動球。
@@ -73,8 +72,8 @@ export function p3Seg(G: GameState, t0: number): number {
   impale(G, g);
   const h = g + 6;
   const spinEnd = spin(G, h);
-  // 外場的跳躍波動炮和迴旋式的第一擊差不多同時
-  jump(G, h + P3.spin.cast - 1);
+  // 外場先躲跳躍波動炮（兩發），接著和內場一起躲迴旋式
+  jump(G, spinJumpAt(h));
   const i = spinEnd + 3.4;
   swap(G, i);
   const j = i + 9;
