@@ -1,8 +1,8 @@
 /*
  * 黑暗神聖
  * 時間點（相對 t0）：0 開始詠唱、點名 6 名補師；+cast 判定 6 處分攤。
- * 判定規則：判定圈要整個在自己聯盟、自己小隊（前排 MT 組／後排 ST 組）的分攤圈 stackR 內。
- *   例外：剛丟完 B 聯盟（南）核爆的 MT 組玩家站進 B 後排 → 只給提醒（攻略允許靠減傷 3:5 吃）。
+ * 判定規則：判定圈要整個在自己隊伍、自己小隊（前排 MT 組／後排 ST 組）的分攤圈 stackR 內。
+ *   例外：剛丟完 B 隊伍（南）核爆的 MT 組玩家站進 B 後排 → 只給提醒（攻略允許靠減傷 3:5 吃）。
  * 估計值：詠唱 4 秒、分攤圈半徑 3.2 m（見 tuning.ts HOLY）。
  */
 import { ALS, partyOf, type Party } from '../core/constants';
@@ -45,14 +45,14 @@ export function holy(G: GameState, t0: number): number {
     });
     if (P.dead) return;
     const party = partyOf(P.role), s = HOLY_SPOT(P.al, party), d = dist(P, s);
-    const fix = { ...s, r: HOLY.stackR, label: `${P.al} 聯盟${partyName(party)}` };
-    // TODO(確認): legacy 只對 B 聯盟（6 秒內丟過核爆）開例外；A／C 的核爆玩家是否也允許換排，未定
+    const fix = { ...s, r: HOLY.stackR, label: `${P.al} 隊伍${partyName(party)}` };
+    // TODO(確認): legacy 只對 B 隊伍（6 秒內丟過核爆）開例外；A／C 的核爆玩家是否也允許換排，未定
     if (bF === P && party === 'MT' && dist(P, HOLY_SPOT('B', 'ST')) <= HOLY.stackR) {
       warn(G, tag, '剛丟完南邊核爆來不及進前排，改進後排（攻略允許微調，靠減傷 3:5 吃）', fix);
       return;
     }
-    if (d <= HOLY.stackR) good(G, tag, `進了 ${P.al} 聯盟${partyName(party)}的分攤`, fix);
-    else bad(G, tag, `沒進 ${P.al} 聯盟${partyName(party)}的分攤`, fix);
+    if (d <= HOLY.stackR) good(G, tag, `進了 ${P.al} 隊伍${partyName(party)}的分攤`, fix);
+    else bad(G, tag, `沒進 ${P.al} 隊伍${partyName(party)}的分攤`, fix);
   });
   npcSettle(G, t0 + 4.4, me);
   return t0 + 4.5;

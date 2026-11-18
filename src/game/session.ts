@@ -23,6 +23,8 @@ export class Session {
   alpha = 1;
   /** 時間軸的起點（秒）；0 表示從頭 */
   startAt = 0;
+  /** 指定機制樣式（教學頁用，見 state.ts variant）；null＝全部照亂數 */
+  pick: Record<string, string> | null = null;
   /** 截圖網址參數用：畫面停住不推進（開新局就解除） */
   frozen = false;
   readonly rec = new Recorder();
@@ -46,6 +48,7 @@ export class Session {
     const drill = getDrill(this.cfg.drill);
     this.frozen = false;
     const G = createState(this.cfg, auto, createRng(seed), drill);
+    if (this.pick) G.pick = { ...this.pick };
     if (!this.cfg.cdReset && this.cdsKeep) G.cds = this.cdsKeep;
     this.G = G;
     this.acc = 0;

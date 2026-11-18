@@ -82,12 +82,13 @@ export function p2Refresh(G: GameState, e: Entity): void {
   const home = homeE(e);
   const homeCell = cellUnder(home);
   if (!homeCell) return; // 外場
+  // 平時多久換一次格（站久了機制中途會被迫刷新、撞進別人的路線，所以平時就勤一點換）
   const r = (e.p2r ??= { phase: 'idle', at: 0, cell: -1, threshold: G.rng.rnd(6, 12) });
   const cur = cellUnder(e);
   const atPoint = (p: Vec): boolean => Math.hypot(e.x - p.x, e.y - p.y) < 0.15;
   if (r.phase === 'idle') {
     // 機制進行中也要刷新：站了 SOFT_REFRESH 秒以上、附近沒有預兆就先跳一格；快 45 秒就不管了一定要跳。
-    // 跳完回到原本的位置（不是座位）
+    // 機制中跳完回到原本的位置（不是座位）；平時換過去就留在那格
     const stand = cur ? s.cells[cur.idx].stand : 0;
     const settled = (!e.nav || e.nav.next === null) && (!e.mt || cellUnder(e.mt) === cur);
     const hard = stand >= LAST_REFRESH, soft = stand >= FORCE_REFRESH && !dangerNear(G, e);
@@ -99,6 +100,9 @@ export function p2Refresh(G: GameState, e: Entity): void {
     }
     if (!cur) return;
     r.ret = e.mt ? { x: e.mt.x, y: e.mt.y } : undefined;
+    // 平時（沒被機制逼著）換格：走進旁邊的格子就留在那裡，下次再換回來（攻略：每人在 2 格之間來回，不用回頭）；
+    // 機制進行中被迫換格：要回到機制指定的位置
+    r.stay = !forced;
     // 優先不進交叉格（攻略：只是更新地板時不要進交叉口）；機制中避開有預兆的格子
     const opts = neighbors(cur).filter((n) => canEnter(G, e, n, true) && (hard || !dangerNear(G, center(n))))
       .sort((a, b) => Number(a.cross) - Number(b.cross));
@@ -107,7 +111,10 @@ export function p2Refresh(G: GameState, e: Entity): void {
     r.phase = 'out';
     p2Goto(G, e, center(opts[0]), true);
   } else if (r.phase === 'out') {
-    if (cur?.idx === r.cell && atPoint(center(CELLS[r.cell]))) { r.phase = 'wait'; r.at = G.t + 0.5; }
+    if (cur?.idx === r.cell && atPoint(center(CELLS[r.cell]))) {
+      if (r.stay) { r.phase = 'idle'; r.threshold = G.rng.rnd(6, 12); }
+      else { r.phase = 'wait'; r.at = G.t + 0.5; }
+    }
   } else if (r.phase === 'wait') {
     if (G.t >= r.at) { r.phase = 'back'; p2Goto(G, e, r.ret ?? home, true); }
   } else if (atPoint(r.ret ?? home)) {

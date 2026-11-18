@@ -2,22 +2,29 @@
  * 迴旋式波動炮（王）＋跳躍波動炮（小王）（P3 華容道）
  *
  * 迴旋式：台詞「一群螻蟻，把你們趕盡殺絕！」。王隨機面向東或西，順／逆時針旋轉；
- *   +cast 起每 gap 秒一擊、共 5 擊，每擊轉 step（共 90°），打前後的直線（只打內場）。
- *   處理（攻略）：依序往前補 1 格躲開。模擬器：內場 Bot 先算好每一擊前要站的格子（一擊之間最多走一格、
+ *   +cast 起每 gap 秒一擊、共 5 擊，每擊轉 step（共 90°），打前後的直線（長到外場平臺與環狀地板）。
+ *   處理（攻略）：內場依序往前補 1 格躲開。模擬器：內場 Bot 先算好每一擊前要站的格子（一擊之間最多走一格、
  *   只走進上一擊時沒人的格子），再照表走。
+ *   外場：躲完跳躍波動炮後一起躲迴旋式，避開黃色直線即可（王面向東或西，第一擊橫掃平臺中線，
+ *   之後轉開就打不到平臺）：Bot 先站到平臺中線南北兩側，第一擊過後回原位。
  * 跳躍波動炮：小王跳到平臺外側、面向內場，正側＝先正面再兩側、側正＝先兩側再正面，扇形 90°。
- *   處理：先站在第一發打不到的區域，第一發後換到另一區。
+ *   處理：先站在第一發打不到的區域，第一發後換到另一區。兩發打完後才是迴旋式的第一擊（JUMP_LEAD）。
  * 估計值：見 tuning.ts P3.spin／P3.jump。
  */
 import { P2, P3 } from '../../core/tuning';
 import { center, cellUnder, rel, sbFacing, zoneE, homeE, type Cell, type Side } from '../../core/p2';
 import { hitRect, hitFan } from '../../core/hit';
 import type { Vec } from '../../core/constants';
-import { at, setCast, alertMsg, say, seqAdd, type Entity, type GameState } from '../../game/state';
+import { at, setCast, alertMsg, say, seqAdd, variant, type Entity, type GameState } from '../../game/state';
 import { good } from '../../game/results';
 import { isBot } from '../../game/bots';
 import { dodge, rearrange, type Hazard } from '../../game/p3plan';
 import { failE, busy, allSettle, SIDES, outers, BOSS3 } from './common';
+
+/** 跳躍波動炮比迴旋式早幾秒開始：兩發（開始後 4 秒、5.6 秒）都在迴旋式第一擊之前打完 */
+const JUMP_LEAD = 7;
+/** 和迴旋式一起出的跳躍波動炮的開始時間（迴旋式從 t0 開始詠唱） */
+export const spinJumpAt = (t0: number): number => t0 + P3.spin.cast - JUMP_LEAD;
 
 /** 直線（前後兩端，從王出發各 len 長）會不會打到 p */
 const spinHit = (p: Vec, a: number, hb?: number): boolean =>
@@ -26,15 +33,20 @@ const spinHit = (p: Vec, a: number, hb?: number): boolean =>
 export function spin(G: GameState, t0: number): number {
   const tag = '迴旋式波動炮';
   seqAdd(G, t0, '迴旋式波動炮');
-  const face = G.rng.chance(0.5) ? Math.PI / 2 : -Math.PI / 2, dir = G.rng.chance(0.5) ? 1 : -1;
+  const face = G.rng.chance(0.5) ? Math.PI / 2 : -Math.PI / 2, dir = variant(G, 'spinDir', G.rng.chance(0.5) ? 'cw' : 'ccw') === 'cw' ? 1 : -1;
   const hits = [0, 1, 2, 3, 4].map((k) => ({ t: t0 + P3.spin.cast + k * P3.spin.gap, a: face + dir * k * P3.spin.step }));
   const end = hits[4].t;
   at(G, t0, () => {
-    setCast(G, '迴旋式波動炮', P3.spin.cast, `王面向${face > 0 ? '東' : '西'}、${dir > 0 ? '順' : '逆'}時針轉 90°：內場跟著直線一格一格往前補`);
+    setCast(G, '迴旋式波動炮', P3.spin.cast, `王面向${face > 0 ? '東' : '西'}、${dir > 0 ? '順' : '逆'}時針轉 90°：內場跟著直線一格一格往前補；外場躲完跳躍波動炮後避開黃色直線`);
     say(G, '一群螻蟻，把你們趕盡殺絕！', 3);
     alertMsg(G, `迴旋式：${dir > 0 ? '順時針' : '逆時針'}`, 2.5);
+    if (G.p2) G.p2.aura = { kind: 'spin', face, dir, until: end };
     busy(G, end + 2);
   });
+  // Bot：先算好每一擊前要站的格子（有人還在移動、算不出來就再試，直到第一擊前 1 秒）
+  // 詠唱很長：第一擊前先有幾個「不會被打」的步驟，讓 Bot 先就位（攻略：坦克先移到深處格）
+  const pre: Hazard[] = [0.35, 0.55, 0.75].map((k) => ({ t: t0 + P3.spin.cast * k, hit: () => false }));
+  const hz: Hazard[] = [...pre, ...hits.map((h) => ({ t: h.t, hit: (c: Cell) => spinHit(center(c), h.a, 0.6) }))];
   // 先刷新格子：五擊期間可能只往前補一兩格（上下孤島那格的人可能一直不動），站太久的人詠唱一開始就先換格
   const REFRESH = P2.standGone - (end + 2 - t0) - 6;
   at(G, t0 + 0.1, () => {
@@ -46,22 +58,37 @@ export function spin(G: GameState, t0: number): number {
     if (start.has(G.player)) alertMsg(G, '先刷新格子：迴旋式期間可能沒機會換格', 3, true);
     for (let k = 0; k < 4; k++) rearrange(G, k, (e, c) => !start.has(e) || c.idx !== start.get(e), G.t, t0 + 2);
   });
-  // Bot：先算好每一擊前要站的格子（有人還在移動、算不出來就再試，直到第一擊前 1 秒）
-  const hz: Hazard[] = hits.map((h) => ({ t: h.t, hit: (c: Cell) => spinHit(center(c), h.a, 0.7) }));
   for (let k = 0; k < 4; k++) {
-    const tryPlan = (): void => { if (G.p2 && !dodge(G, k, hz, G.t) && G.t + 0.4 < hits[0].t - 1) at(G, G.t + 0.4, tryPlan); };
+    const tryPlan = (): void => { if (G.p2 && !dodge(G, k, hz.filter((h) => h.t > G.t + 0.3), G.t) && G.t + 0.4 < hits[0].t - 1) at(G, G.t + 0.4, tryPlan); };
     at(G, t0 + 2.1, tryPlan);
   }
+  // 外場：跳躍波動炮打完後，留在平臺中線「自己現在這一側」躲第一擊（不要橫越中線），第一擊過後回原位
+  const SAFE_Y = P3.spin.hw + 1.4;
+  const outSpot = (e: Entity): Vec => {
+    const s = Math.sign(e.y) || 1;
+    return Math.abs(e.y) >= SAFE_Y ? { x: e.x, y: e.y } : { x: e.x, y: s * SAFE_Y };
+  };
+  at(G, hits[0].t - 0.9, () => {
+    SIDES.forEach((side) => outers(G, side).forEach((e) => { if (isBot(G, e) && !e.dead) { e.mt = outSpot(e); e.buffs.sprint = G.t + 2; } }));
+    const P = G.player;
+    if (zoneE(P) !== 'in' && G.cfg.hint && !G.auto) G.hints = [{ ...outSpot(P), r: 1, label: '避開迴旋式直線' }];
+  });
+  at(G, hits[1].t, () => SIDES.forEach((side) => outers(G, side).forEach((e) => { if (isBot(G, e)) e.mt = homeE(e); })));
   hits.forEach((h, k) => {
     at(G, h.t - 1.1, () => { if (G.cfg.tele) G.tele.push({ k: 'line', ...BOSS3, a: h.a, hw: P3.spin.hw, len: P3.spin.len, until: h.t }); });
-    at(G, h.t, () => G.ents.forEach((e) => {
-      if (e.dead || zoneE(e) !== 'in' || !spinHit(e, h.a)) return;
-      failE(G, e, tag, `第 ${k + 1} 擊被迴旋式直線打中`, { x: e.x, y: e.y, r: 1, label: '往直線已經掃過的格子補' });
-    }));
+    at(G, h.t, () => {
+      if (k === 0) G.hints = G.hints.filter((x) => x.label !== '避開迴旋式直線');
+      G.ents.forEach((e) => {
+        if (e.dead || !spinHit(e, h.a)) return;
+        failE(G, e, tag, `第 ${k + 1} 擊被迴旋式直線打中`, zoneE(e) === 'in'
+          ? { x: e.x, y: e.y, r: 1, label: '往直線已經掃過的格子補' }
+          : { ...outSpot(e), r: 1, label: '避開黃色直線（平臺中線南北兩側）' });
+      });
+    });
   });
   at(G, end + 0.1, () => {
     const P = G.player;
-    if (zoneE(P) === 'in' && !P.dead && !G.fails.some((f) => f.startsWith(tag))) good(G, tag, '五擊全部躲開');
+    if (!P.dead && !G.fails.some((f) => f.startsWith(tag))) good(G, tag, '五擊全部躲開');
   });
   allSettle(G, end + 0.3);
   return end;
@@ -70,13 +97,13 @@ export function spin(G: GameState, t0: number): number {
 export type JumpOrder = 'frontFirst' | 'sideFirst';
 
 /** 跳躍波動炮的兩個站位區：正面區、側面區（相對 f, r） */
-// 小王在平臺外側（f = 4）面向內場：正面區在平臺內側、側面區在小王兩旁
+// 小王在平臺外側（f = 4）面向內場：正面區在小王的內場側、側面區在小王兩旁
 const FRONT: [number, number][] = [[-1, -1.2], [-1, 1.2], [-2.5, -1.2], [-2.5, 1.2], [-4, -1.2], [-4, 1.2]];
 const SIDE: [number, number][] = [[3, -3.5], [3, 3.5], [1.5, -4], [1.5, 4], [0.5, -4.7], [0.5, 4.7]];
 
 export function jump(G: GameState, t0: number, order?: JumpOrder): number {
   const tag = '跳躍波動炮';
-  const ord: JumpOrder = order ?? (G.rng.chance(0.5) ? 'frontFirst' : 'sideFirst');
+  const ord: JumpOrder = order ?? variant<JumpOrder>(G, 'jump', G.rng.chance(0.5) ? 'frontFirst' : 'sideFirst');
   seqAdd(G, t0, ord === 'frontFirst' ? '正側跳躍波動炮（小王）' : '側正跳躍波動炮（小王）');
   const t1 = t0 + 4, t2 = t1 + P3.jump.gap;
   const sbAt = (side: Side): Vec => rel(side, P3.jump.f, 0);

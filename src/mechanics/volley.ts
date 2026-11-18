@@ -37,10 +37,11 @@ const isVoidCell = (u: number, v: number): boolean => { const s = cellStand(u, v
 /**
  * 走位計畫：先站「兩方向第一批都不打」的格子 (su,sv)，各方向第一批炸完後踩進打過的列 (fu,fv)。
  * 中途、最後的格子都不能是王底下沒地板的那一格。
- * 成本＝移動列數＋最後離中央的距離（攻略站交會點旁，結束時靠中央，下一個機制才跑得到）。
+ * 成本＝移動列數（第一批炸完後踩進去那一步加重）＋最後離中央的距離（攻略站交會點旁，結束時靠中央，下一個機制才跑得到）。
  */
 export function planCells(cu: number, cv: number, first: { U: number[]; V: number[] }, uFirst: boolean): { su: number; fu: number; sv: number; fv: number } | null {
-  const axis = (cur: number, s: number, f: number): number => Math.abs(cur - s) * 2 + Math.abs(s - f) + Math.abs(f - (LANES - 1) / 2) * 0.9;
+  // 第一批炸完到下一輪只有 1.5～3.5 秒：踩進去的列盡量就在隔壁（5 列時跨好幾列會來不及）
+  const axis = (cur: number, s: number, f: number): number => Math.abs(cur - s) * 2 + Math.abs(s - f) * 3 + Math.abs(f - (LANES - 1) / 2) * 0.9;
   let best: { su: number; fu: number; sv: number; fv: number } | null = null, bestCost = Infinity;
   for (let su = 0; su < LANES; su++) for (let sv = 0; sv < LANES; sv++) {
     if (first.U.includes(su) || first.V.includes(sv)) continue;

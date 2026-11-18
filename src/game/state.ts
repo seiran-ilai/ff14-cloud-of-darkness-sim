@@ -67,8 +67,10 @@ export interface Entity {
   mark?: { kind: 'seed' | 'charge' | 'spread' | 'dive' | 'impale'; until: number };
   /** P3 華容道的座位（混沌迫近換位後改坐別人的位置）；沒有就是自己的 al／role */
   seat?: { al: Alliance; role: Role };
+  /** 換位後另外指定的定點（例如進格子的外場 MT：角落格往中間 2 格）；沒有就照座位 */
+  seatHome?: Vec;
   /** P2 Bot 刷新格子的狀態 */
-  p2r?: { phase: 'idle' | 'out' | 'wait' | 'back'; at: number; cell: number; threshold: number; ret?: Vec };
+  p2r?: { phase: 'idle' | 'out' | 'wait' | 'back'; at: number; cell: number; threshold: number; ret?: Vec; stay?: boolean };
 }
 
 export type Telegraph =
@@ -126,7 +128,7 @@ export interface Extra {
   flareT?: number;
   holy?: boolean;
   arms?: { mode: BladeMode; until: number };
-  eyes?: { pts: readonly Vec[]; until: number };
+  eyes?: { side: number; until: number };
   orb?: StoredKind | null;
   beam?: Record<Alliance, Entity>;
 }
@@ -162,6 +164,8 @@ export interface GameState {
   tl: boolean;
   seq: SeqItem[];
   stored: StoredKind | null;
+  /** 指定機制樣式（教學頁用，例如 { embrace: 'cover' }）；沒指定的照亂數 */
+  pick?: Record<string, string>;
   ff: boolean;
   /** 目前「擁有」Bot 回原位權的機制 */
   active?: object;
@@ -195,6 +199,8 @@ export interface Drill {
   name: string;
   sub: string;
   brief: string;
+  /** 說明卡「機制說明」要列的機制（drills/mechinfo.ts 的名稱） */
+  info?: string[];
   setup(G: GameState): void;
 }
 
@@ -215,6 +221,12 @@ export function createState(cfg: Config, auto: boolean, rng: Rng, drill: Drill):
 
 // ---- 狀態小工具（機制檔共用） ----
 export const at = (G: GameState, t: number, fn: () => void): void => G.ev.at(t, fn);
+
+/**
+ * 機制樣式：rolled 是照亂數抽出的樣式；教學頁指定了 G.pick[key] 就改用指定的。
+ * 一定先抽亂數再覆蓋，亂數的使用順序不變（同種子仍是同一局）。
+ */
+export const variant = <T extends string>(G: GameState, key: string, rolled: T): T => (G.pick?.[key] as T | undefined) ?? rolled;
 export const setCast = (G: GameState, name: string, dur: number, tip?: string): void => { G.cast = { name, start: G.t, dur, tip }; G.sfx.push('cast'); };
 export const say = (G: GameState, text: string, dur = 4): void => { G.line = { text, until: G.t + dur }; };
 export const alertMsg = (G: GameState, text: string, dur = 2, danger?: boolean): void => {

@@ -49,6 +49,7 @@ export function chargeOrSpread(G: GameState, t0: number, kind: ChargeKind): numb
       ? '橙黃色蓄能：直線分攤。外場整組到平臺中央；內場角落 3 人站 L 形'
       : '紫黑色懸浮球：先內場、再外場各一個圓形。內場站待機格中央，外場散開');
     say(G, kind === 'charge' ? '把你們送入更加幽邃的黑暗之中！' : '全都給我消失吧！', 3);
+    if (G.p2) G.p2.aura = { kind, until: tR };
     busy(G, end + 1);
   });
   // Bot 反應後就位
@@ -112,13 +113,13 @@ export function chargeOrSpread(G: GameState, t0: number, kind: ChargeKind): numb
       if (mineOk && !P.dead) good(G, tag, '直線分攤處理正確', fixFor(P));
     });
   } else {
-    const resolve = (group: () => Entity[]) => (): void => {
+    const resolve = (group: () => Entity[], r: number) => (): void => {
       const P = G.player, g = group();
       let mineOk = true;
       g.forEach((src) => {
-        G.fx.push({ k: 'stack', x: src.x, y: src.y, r: P3.spread.r, until: G.t + 0.5 });
+        G.fx.push({ k: 'stack', x: src.x, y: src.y, r, until: G.t + 0.5 });
         G.ents.forEach((e) => {
-          if (e === src || e.dead || !hitCircle(e, src, P3.spread.r)) return;
+          if (e === src || e.dead || !hitCircle(e, src, r)) return;
           if (e.isPlayer || src.isPlayer) mineOk = false;
           failE(G, src, tag, '分散式的圓形打到別人', fixFor(src));
         });
@@ -129,10 +130,10 @@ export function chargeOrSpread(G: GameState, t0: number, kind: ChargeKind): numb
       inners(G).forEach((e) => { e.mark = { kind: 'spread', until: tR }; G.tele.push({ k: 'circle', x: e.x, y: e.y, r: P3.spread.r, until: tR }); });
     });
     at(G, tR, () => { G.hints = []; inners(G).forEach((e) => { e.mark = undefined; }); });
-    at(G, tR, resolve(() => inners(G)));
-    at(G, end - TELE_SHOW, () => SIDES.forEach((s) => outers(G, s).forEach((e) => { e.mark = { kind: 'spread', until: end }; G.tele.push({ k: 'circle', x: e.x, y: e.y, r: P3.spread.r, until: end }); })));
+    at(G, tR, resolve(() => inners(G), P3.spread.r));
+    at(G, end - TELE_SHOW, () => SIDES.forEach((s) => outers(G, s).forEach((e) => { e.mark = { kind: 'spread', until: end }; G.tele.push({ k: 'circle', x: e.x, y: e.y, r: P3.spread.rOut, until: end }); })));
     at(G, end, () => SIDES.forEach((s) => outers(G, s).forEach((e) => { e.mark = undefined; })));
-    at(G, end, resolve(() => SIDES.flatMap((s) => outers(G, s))));
+    at(G, end, resolve(() => SIDES.flatMap((s) => outers(G, s)), P3.spread.rOut));
   }
   allSettle(G, end + 0.3);
   return end;

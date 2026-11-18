@@ -1,5 +1,5 @@
 // 王、暗之刃手臂、心臟與陰冷擁抱手勢、雲之魔刃標示、齊射雲、球、邪眼
-import { BOSS } from '../core/constants';
+import { BOSS, R } from '../core/constants';
 import { fromUV, laneC } from '../core/geometry';
 import { HALF, LANES } from '../core/constants';
 import { VOLLEY } from '../core/tuning';
@@ -102,10 +102,14 @@ export function drawOrbAndEyes(c: CanvasRenderingContext2D, G: GameState): void 
     else { c.fillStyle = '#bfe9ff'; circle(c, 0, 0, 1.3 * p); c.fill(); }
   }
   if (G.extra.eyes && G.t < G.extra.eyes.until) {
-    G.extra.eyes.pts.forEach(({ x, y }) => {
-      c.fillStyle = '#2a0d16'; circle(c, x, y, 1.6); c.fill();
-      c.strokeStyle = '#ff5d6c'; c.lineWidth = px(2); c.stroke();
-      c.fillStyle = '#ff5d6c'; circle(c, x, y, 0.6); c.fill();
+    const s = G.extra.eyes.side;
+    // 側邊 2 個＋正面（王的北邊）1 個
+    ([[s * (R + 2.5), -4.5], [s * (R + 2.5), 4.5], [0, -(R + 2.5)]] as const).forEach(([x, y]) => {
+      c.fillStyle = `rgba(255,93,108,${0.25 + 0.15 * Math.sin(G.t * 6)})`; circle(c, x, y, 3.2); c.fill();
+      c.fillStyle = '#2a0d16'; circle(c, x, y, 2.2); c.fill();
+      c.strokeStyle = '#ff5d6c'; c.lineWidth = px(3); c.stroke();
+      c.fillStyle = '#ff5d6c'; circle(c, x, y, 0.9); c.fill();
     });
+    text(c, '邪眼', s * (R + 2.5), 0, 13, '#ff9aa4');
   }
 }

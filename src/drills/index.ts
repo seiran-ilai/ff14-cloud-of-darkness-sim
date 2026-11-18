@@ -6,6 +6,7 @@ import { p2 } from './p2';
 import { p3singles } from './p3singles';
 import { parseRun, makeRunDrill } from './run';
 import { parseRand, makeRandDrill } from './random';
+import { flowHtml } from './mechinfo';
 
 /** 所有練習項目；順序即畫面上按鈕順序 */
 export const DRILLS: Record<string, Drill> = { opener, tl1, tl2, ...singles, ...p2, ...p3singles };
@@ -19,7 +20,8 @@ export function makeWeakDrill(keys: string[]): Drill {
   return {
     name: '弱點練習',
     sub: list.map((k) => singles[k].name).join('・'),
-    brief: `把最常失誤的機制串在一起練：${list.map((k) => singles[k].name).join(' → ')}。`,
+    brief: '把最常失誤的機制串在一起練。' + flowHtml(list.map((k) => singles[k].name)),
+    info: [...new Set(list.flatMap((k) => singles[k].info ?? []))],
     setup(G) {
       G.tl = list.length > 1;
       let t = 1;

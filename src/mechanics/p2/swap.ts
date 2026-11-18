@@ -4,8 +4,9 @@
  * 混沌迫近（王）：+cast 全員眩暈 2 秒並換位（同職能互換；內場格子的站立計時不重置）。
  *   換位規律（docs）：外場離王近的 3 人和另一側近的 3 人互換；外場遠的 3 人和內場「較遠一角」互換
  *   （北端或南端隨機）；沒和外場換的兩個內場角落彼此互換。
- *   模擬器：外場近 3 人＝D2、D3、D4，遠 3 人＝MT、H2、D1（攻略：外場的坦克＋補師＋DPS 進內場）；
- *   換位後改坐對方的座位（之後所有站位都照新座位）。
+ *   模擬器（照小抄イディル改）：外場近 3 人＝D2、D3、D4（東西平臺互換），遠 3 人＝MT、H2、D1：
+ *   A 隊進東北／東南角、C 隊進西北／西南角；西側角落的人到東平臺、東側角落的人到西平臺。
+ *   換位後改坐對方的座位（之後所有站位都照新座位）；進格子的 MT 站角落格往中間 2 格（seatHome）。
  * 潛地式（王）：台詞「你逃得掉嗎？」。內場每個角落點 1 人，在他身後連放 16 次圓形（落在 lag 秒前的位置）。
  *   處理（攻略）：預兆一出來被點者就沿井字外圈順時針跑一圈回定點（16 發大約只追半圈）；其他人進凸出格讓路。
  * 磔殺（小王）：對外場 MT 的圓形死刑；其他人離開。
@@ -17,7 +18,7 @@ import { roleType, type Alliance, type Role, type Vec } from '../../core/constan
 import { cellAt, cellUnder, center, rel, zoneE, roleE, homeE, seatOf, zoneOf, CORNERS, cornerOfCell, type Cell, type Side } from '../../core/p2';
 import { dist } from '../../core/geometry';
 import { hitCircle } from '../../core/hit';
-import { at, setCast, alertMsg, say, seqAdd, type Entity, type GameState } from '../../game/state';
+import { at, setCast, alertMsg, say, seqAdd, variant, type Entity, type GameState } from '../../game/state';
 import { good } from '../../game/results';
 import { isBot } from '../../game/bots';
 import { entIndex } from '../../game/p2state';
@@ -40,13 +41,17 @@ const FAR: Role[] = ['MT', 'H2', 'D1'];
 const NEAR: Role[] = ['D2', 'D3', 'D4'];
 const byType = (seats: Seat[], r: Role): Seat => seats.find((s) => roleType(s.role) === roleType(r))!;
 
-/** 換位的配對（座位對座位） */
+/**
+ * 換位的配對（座位對座位）。小抄（イディル改）：外場遠的 3 人換到「較遠一側」的角落——
+ * A 隊（西平臺）的 MT／H2／D1 進東北或東南角，C 隊（東平臺）的進西北或西南角；
+ * 被換出來的角落：西側角落的人到東平臺、東側角落的人到西平臺。
+ */
 function swapPairs(north: boolean): [Seat, Seat][] {
   const pairs: [Seat, Seat][] = NEAR.map((r) => [{ al: 'A', role: r }, { al: 'C', role: r }]);
   const wk = north ? 0 : 2, ek = north ? 1 : 3;
   FAR.forEach((r) => {
-    pairs.push([{ al: 'A', role: r }, byType(CORNER_SEATS[wk], r)]);
-    pairs.push([{ al: 'C', role: r }, byType(CORNER_SEATS[ek], r)]);
+    pairs.push([{ al: 'A', role: r }, byType(CORNER_SEATS[ek], r)]);
+    pairs.push([{ al: 'C', role: r }, byType(CORNER_SEATS[wk], r)]);
   });
   const [x, y] = north ? [2, 3] : [0, 1];
   CORNER_SEATS[x].forEach((s) => pairs.push([s, byType(CORNER_SEATS[y], s.role)]));
@@ -57,9 +62,9 @@ export function swap(G: GameState, t0: number): number {
   const tag = '混沌迫近';
   seqAdd(G, t0, '混沌迫近（換位）');
   const tR = t0 + P3.swap.cast;
-  const north = G.rng.chance(0.5);
+  const north = variant(G, 'swap', G.rng.chance(0.5) ? 'north' : 'south') === 'north';
   at(G, t0, () => {
-    setCast(G, '混沌迫近', P3.swap.cast, `換位：外場遠的 3 人和內場${north ? '北' : '南'}端角落互換、外場近的 3 人東西互換；換位後坦克記得挑釁`);
+    setCast(G, '混沌迫近', P3.swap.cast, `換位：外場 MT／H2／D1 換到另一側的${north ? '北' : '南'}端角落（A 隊→東、C 隊→西），那兩個角落的人換到另一側平臺；D2／D3／D4 東西互換；換位後坦克記得挑釁`);
     busy(G, tR + 3);
   });
   at(G, tR, () => {
@@ -71,6 +76,12 @@ export function swap(G: GameState, t0: number): number {
       const ea = holder.get(seatKey(a)), eb = holder.get(seatKey(b));
       if (!ea || !eb || ea.dead || eb.dead) return;
       ea.seat = b; eb.seat = a;
+    });
+    // 小抄：進格子的外場 MT 站「角落格往中間 2 格」（不是原本角落坦克的位置，角落格旁 1 格）
+    G.ents.forEach((e) => {
+      if (e.dead || e.role !== 'MT' || zoneOf(e.al, e.role) === 'in' || zoneE(e) !== 'in') return;
+      const [ci, cj] = CORNERS[cornerOfCell(cellUnder(homeE(e))!)];
+      e.seatHome = center(cellAt(ci === 1 ? 3 : 4, cj)!);
     });
     // 瞬間換位：站到新座位；內場格子的站立計時不重置（換成新的人繼續算）
     const stands = new Map<number, number>();
@@ -136,20 +147,27 @@ export function dive(G: GameState, t0: number): number {
     }
     if (targets.includes(G.player)) alertMsg(G, '你被潛地式點名：詠唱結束就順時針跑，不要停', 2.5, true);
   });
-  // 被點的人沿外圈順時針跑：到一個角落格就換下一個
+  // 被點的人沿外圈順時針跑：到一個角落格就換下一個；最後一段（回到起點角落）攻略是「回定點」：
+  // 自己的定點在最後一段路上（例如角落格南邊那格）就直接停在定點，不跑過頭再折返
   at(G, tS, () => {
     G.hints = [];
     targets.forEach((tg) => {
       if (!isBot(G, tg)) return;
-      const k0 = LOOP.indexOf(cornerOfCell(cellUnder(tg) ?? cellUnder(homeE(tg))!));
+      const home = homeE(tg), homeCell = cellUnder(home)!;
+      const k0 = LOOP.indexOf(cornerOfCell(homeCell));
+      const cornerAt = (s: number): Cell => { const [i, j] = CORNERS[LOOP[(k0 + s) % 4]]; return cellAt(i, j)!; };
+      // 最後一段：從前一個角落到起點角落，定點在這條路上（同一行／列、在兩個角落之間）
+      const from = cornerAt(3), to = cornerAt(4);
+      const between = (a: number, b: number, x: number): boolean => x >= Math.min(a, b) && x <= Math.max(a, b);
+      const homeOnLast = (homeCell.i === to.i && from.i === to.i && between(from.j, to.j, homeCell.j))
+        || (homeCell.j === to.j && from.j === to.j && between(from.i, to.i, homeCell.i));
+      const target = (s: number): Vec => (s === 4 && homeOnLast ? home : center(cornerAt(s)));
       let step = 1, sent = 0;
       const go = (): void => {
         if (tg.dead || step > 4 || !G.p2) return;
-        const [ci, cj] = CORNERS[LOOP[(k0 + step) % 4]];
-        const c = cellAt(ci, cj)!;
-        if (cellUnder(tg) === c && dist(tg, center(c)) < 0.3) step++;
+        if (dist(tg, target(step)) < 0.3) step++;
         // 目標換了才重新下指令（每次下指令都會重算路，太頻繁會一直退回格子中央）
-        if (step <= 4 && sent !== step) { const [ni, nj] = CORNERS[LOOP[(k0 + step) % 4]]; p2Goto(G, tg, center(cellAt(ni, nj)!)); sent = step; }
+        if (step <= 4 && sent !== step) { p2Goto(G, tg, target(step)); sent = step; }
         tg.buffs.sprint = G.t + 2;
         at(G, G.t + 0.15, go);
       };

@@ -15,9 +15,9 @@ export const homeCorner = (e: Entity): number => cornerOfCell(cellUnder(homeE(e)
 /** 現在在哪個角落：站在格子上就看格子，否則看座位（放完種子可能被荊棘隔在別的角落） */
 export const curCorner = (e: Entity): number => { const c = cellUnder(e); return c ? cornerOfCell(c) : homeCorner(e); };
 
-/** 某個角落的內場成員（活著的，依現在站的位置） */
+/** 某個角落的內場成員（活著的，依座位；走到別的角落的人由 innerHome 送回來） */
 export const cornerMembers = (G: GameState, k: number): Entity[] =>
-  G.ents.filter((e) => !e.dead && zoneE(e) === 'in' && curCorner(e) === k);
+  G.ents.filter((e) => !e.dead && zoneE(e) === 'in' && homeCorner(e) === k);
 
 /** 角落區裡能站的格子（沒消失、沒有荊棘） */
 export const zoneCells = (G: GameState, k: number): Cell[] =>
@@ -43,7 +43,21 @@ export function rearrange(G: GameState, k: number, goals: Map<Entity, Cell> | ((
     if (tok < 0) tok = ++G.p2.plan[k];
     else if (G.p2.plan[k] !== tok) return;
     if (G.t > until || !G.p2) return;
-    const bots = cornerMembers(G, k).filter((e) => isBot(G, e) && !fixed?.has(e));
+    const allowed = new Set(zoneCells(G, k).map((c) => c.idx));
+    // 被荊棘或消失的格子隔開、怎麼走都到不了任何合格格子的人：這次不搬他（當障礙物），其他人照樣搬
+    const reachable = (e: Entity): boolean => {
+      const from = cellUnder(e);
+      if (!from) return true;
+      const ok = (c: Cell): boolean => (goals instanceof Map ? !goals.get(e) || goals.get(e) === c : goals(e, c));
+      const seen = new Set([from.idx]), q = [from];
+      while (q.length) {
+        const c = q.shift()!;
+        if (ok(c)) return true;
+        for (const n of neighbors(c)) if (allowed.has(n.idx) && !seen.has(n.idx)) { seen.add(n.idx); q.push(n); }
+      }
+      return false;
+    };
+    const bots = cornerMembers(G, k).filter((e) => isBot(G, e) && !fixed?.has(e) && reachable(e));
     const cur = bots.map((e) => cellUnder(e)?.idx ?? -1);
     const goal = goals instanceof Map ? bots.map((e) => goals.get(e)?.idx ?? -1) : [];
     const done = (s: number[]): boolean => (goals instanceof Map
@@ -56,7 +70,6 @@ export function rearrange(G: GameState, k: number, goals: Map<Entity, Cell> | ((
       return;
     }
     if (cur.some((c) => c < 0)) { at(G, G.t + P3.stepDt / 2, tick); return; }
-    const allowed = new Set(zoneCells(G, k).map((c) => c.idx));
     const blocked = blockedBy(G, bots);
     const key = (s: number[]): string => s.join(',');
     const prev = new Map<string, { from: string; who: number; to: number } | null>([[key(cur), null]]);
@@ -106,20 +119,33 @@ export function rearrange(G: GameState, k: number, goals: Map<Entity, Cell> | ((
  */
 export function sendTo(G: GameState, goals: Map<Entity, Cell>, until: number, keep: (c: Cell) => Cell[] = () => []): void {
   const s = G.p2!, path = new Set<number>();
+  // 要走到別的角落的人：在自己角落裡的最後一格（出口）
+  const exit = new Map<Entity, Cell>();
   goals.forEach((c, e) => {
     const from = cellUnder(e);
     const p = from && cellPath(from, c, (x) => cellGone(s, x) || cellThorn(s, x));
     (p ?? [c]).forEach((x) => path.add(x.idx));
     keep(c).forEach((x) => path.add(x.idx));
+    if (p && cornerOfCell(c) !== homeCorner(e)) { const inHome = p.filter((x) => cornerOfCell(x) === homeCorner(e)); if (inHome.length) exit.set(e, inHome[inHome.length - 1]); }
   });
-  const movers = new Set(goals.keys());
-  for (let k = 0; k < 4; k++) rearrange(G, k, (_e, c) => !path.has(c.idx), G.t, until, undefined, movers);
+  // 角落規劃一起搬（直條只有一格寬，要讓路的人卡在死路時得先讓開再換回來）：
+  // 目標格在自己角落的人搬到目標格；要走到別的角落的人先搬到出口（已經離開自己角落也算），之後自己走過去
+  const want = (e: Entity, c: Cell): boolean => {
+    const g = goals.get(e);
+    if (!g) return !path.has(c.idx);
+    const x = exit.get(e);
+    if (x) return c === x || cornerOfCell(c) !== homeCorner(e);
+    return c === g || cornerOfCell(g) !== homeCorner(e);
+  };
+  for (let k = 0; k < 4; k++) rearrange(G, k, want, G.t, until);
   const walk = (e: Entity, c: Cell): void => {
     if (e.dead || G.t > until || !G.p2) return;
-    if (cellUnder(e) !== c && (!e.mt || cellUnder(e.mt) !== c)) { e.buffs.sprint = G.t + 5; p2Goto(G, e, center(c)); }
+    const here = cellUnder(e), x = exit.get(e);
+    const out = !x || here === x || (here && cornerOfCell(here) !== homeCorner(e));
+    if (out && here !== c && (!e.mt || cellUnder(e.mt) !== c)) { e.buffs.sprint = G.t + 5; p2Goto(G, e, center(c)); }
     at(G, G.t + 0.4, () => walk(e, c));
   };
-  goals.forEach((c, e) => { if (isBot(G, e)) at(G, G.t + 1.2, () => walk(e, c)); });
+  goals.forEach((c, e) => { if (isBot(G, e) && cornerOfCell(c) !== homeCorner(e)) at(G, G.t + 0.3, () => walk(e, c)); });
 }
 
 /** 把所有內場 Bot 搬回自己的座位，最後站到座位的精確位置（讓刷新格子接手） */

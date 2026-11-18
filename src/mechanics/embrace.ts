@@ -15,7 +15,7 @@ import { DIRNAME } from '../core/format';
 import { hitRect } from '../core/hit';
 import { EMBRACE } from '../core/tuning';
 import type { Vec } from '../core/constants';
-import { at, setCast, say, alertMsg, seqAdd, embraceLine, EMBRACE_TEXT, type Entity, type EmbraceType, type Fix, type GameState } from '../game/state';
+import { at, setCast, say, alertMsg, seqAdd, variant, embraceLine, EMBRACE_TEXT, type Entity, type EmbraceType, type Fix, type GameState } from '../game/state';
 import { good, bad, hurtPlayer, botHit } from '../game/results';
 import { isBot } from '../game/bots';
 
@@ -41,7 +41,7 @@ export const embraceFace = (type: EmbraceType, p: Vec): number => (type === 'sco
  * 第二次詠唱傳入 after = 第一次的結果，給剩下的 12 人（每人只拿一次），手勢相反。
  */
 export function embraceCast(G: GameState, t0: number, durs: number[], opt: EmbraceOpts = {}): EmbraceCast {
-  const type: EmbraceType = opt.after ? (opt.after.type === 'scoop' ? 'cover' : 'scoop') : G.rng.chance(0.5) ? 'scoop' : 'cover';
+  const type: EmbraceType = opt.after ? (opt.after.type === 'scoop' ? 'cover' : 'scoop') : variant<EmbraceType>(G, 'embrace', G.rng.chance(0.5) ? 'scoop' : 'cover');
   const taken = new Set(opt.after?.groups.flat() ?? []);
   const pool = G.rng.shuffle(G.ents.filter((e) => !taken.has(e)));
   if (opt.withPlayer && pool.includes(G.player)) pool.sort((a, b) => Number(b === G.player) - Number(a === G.player));

@@ -1,4 +1,6 @@
-# 暗黑之雲機制模擬器
+# 暗黑之雲機制模擬器（測試版）
+
+> 目前為測試版：機制與數值仍在調整，可能和實戰有出入，歡迎回報。
 
 FF14「滅・暗黑之雲激鬥戰」的機制練習器：P1 開場、P2 魔法陣階段兩條時間軸與單一機制，以及 P3（製作中）。
 在網頁上用鍵盤滑鼠操作角色，有 23 名照攻略跑位的隊友，可看示範、慢動作回放失誤。
@@ -13,15 +15,15 @@ Vite + TypeScript（strict）+ Canvas 2D，沒有 UI 框架。
 
 | 用途 | 來源 |
 |---|---|
-| 機制效果、陰冷擁抱減益秒數、時間軸 | [FF14 灰機 wiki](https://ff14.huijiwiki.com/)（簡體中文，已轉繁體整理） |
-| 打法（イディル改）、P2／P3 華容道站位與處理方式 | [FF14 繁中高難攻略 — 滅・暗黑之雲激鬥戰](https://cycleapple.github.io/xiv-tc-battle-guide/chaotic/cloud-of-darkness/)（cycleapple） |
-| P3 華容道各座位站位（イディル改） | [滅・暗黑之雲小抄工具](https://cycleapple.github.io/xiv-tc-battle-guide/chaotic/cloud-of-darkness-cheatsheet/)（cycleapple） |
-| イディル改打法原文 | イディルシャイア居住區（[@idyllshireinfo](https://x.com/idyllshireinfo)）；[kanatan 整理](http://kanatan.info/archives/38822195.html) |
-| 攻略頁參考資料 | [Game8](https://game8.jp/ff14)（日文）、Kitten ERP Guides（英文） |
+| 本攻略原文（イディル改） | [イディルシャイア居住區](https://kanatan.info/archives/38822195.html) |
+| 中文翻譯 | [cycleapple FF14 繁中高難攻略 — 滅・暗黑之雲激鬥戰](https://cycleapple.github.io/xiv-tc-battle-guide/chaotic/cloud-of-darkness/) |
+| 站位小抄 | [cycleapple 小抄工具](https://cycleapple.github.io/xiv-tc-battle-guide/chaotic/cloud-of-darkness-cheatsheet/) |
+| 各機制說明（機制效果、減益秒數、時間軸） | [FF14 灰機 wiki](https://ff14.huijiwiki.com/)（簡體中文，已轉繁體整理） |
 
 - 整理後的機制文件：[`docs/cod-mechanics.md`](docs/cod-mechanics.md)（P1、P2、P4）、[`docs/p2-strategy.md`](docs/p2-strategy.md)（P3 華容道）。打法以標「【攻略處理】」的內容為準。
 - **各技能詠唱秒數、AOE 大小、場地尺寸大多是估計值**（攻略與 wiki 都沒寫明），集中在 [`src/core/tuning.ts`](src/core/tuning.ts) 並標「估計」，主要用來練習順序、面向與反應。發現與實戰不符歡迎開 issue。
 - FINAL FANTASY XIV 及相關名稱為 SQUARE ENIX 的商標。本專案為玩家自製的非官方練習工具，與 SQUARE ENIX 無關。
+- 模擬器製作：[@ilainosu.ffxiv](https://www.threads.net/@ilainosu.ffxiv)（Threads）
 
 ## 指令
 
@@ -62,7 +64,10 @@ tests/
 - **連續**：從選的階段一路打到最後（P1 開場 → P2 第一次魔法陣 → P3 華容道 → P4 第二次魔法陣，P4 用 P2 沒用到的時間軸，最後是暗之大泛濫強制團滅）。
 - **單一階段**：只打 P1～P4 其中一段。
 - **隨機**：從勾選的機制（全選 → 階段 → 單一機制）隨機出題，可選重複／不重複、1～5 分鐘；不同場地的機制會瞬間切換場地。
-- **錯誤**：錯誤即停／錯誤不停。
+- **機制教學頁**（`guide.html`，模擬器右上「機制教學」）：一整頁往下捲、左側索引（手機是下拉選單）快速跳到指定機制；各階段流程、每個機制的效果／預兆／應對全部展開，動態圖（捲到哪段播哪段）直接播放模擬器的教學示範（照攻略站位的 Bot），可選座位看自己的站位與走位、調速度、換一局。程式在 `src/guide.ts`。
+- **開始方式**：錯誤即停／錯誤不停／教學示範。
+- **手機版**：版面窄到一欄（≤ 720px）自動切換，只能看教學示範（選站位 → 選階段或單一機制 → 看示範），畫面下方有「機制提示」卡（目前詠唱的處理方式、提示、王台詞與這局的提示紀錄）。程式在 `src/ui/mobile.ts`。
+- **機制提示卡**：電腦版在右欄最上面（固定高度，內容在卡片裡捲動）。遊戲畫面寬度小於 760px（較小的電腦螢幕）時，詠唱提示與王台詞不疊在畫面上（避免擋住王的手勢與跑位），只顯示在這張卡。
 
 網址參數 `drill` 也可以用 `run:cont:p1`、`run:one:p3`、`rand:r:3:p3fear,p3spin` 這種格式。
 

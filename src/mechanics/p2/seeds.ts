@@ -3,31 +3,34 @@
  *
  * 種子彈（小王）：0 詠唱；+cast 點名：每個平臺 2 名外場＋每個內場角落 1 人（頭上紫色種子）；
  *   點名後 mark 秒在目標位置爆炸（判定前 2 秒鎖定位置、出預兆），打到別人算失誤，原地留下暗之荊棘。
- *   處理（攻略）：外場放在平臺的 3／9 點（相對），內場放在面向平臺的那兩格（直條中段）。
+ *   處理（攻略）：外場放在平臺的 3／9 點（以內周為 12 點＝平臺南北邊緣的中間），內場放在面向平臺的那兩格（直條中段）。
  *   暗之荊棘：佔用 1 格（算 1 人，放完要立刻離開那格）、站在荊棘裡受刺傷、兩個荊棘太近會大爆炸。
- *   模擬器（玩家回饋）：內場一側上下兩角各點 1 人；另一側上或下其中一角點 2 人，照 H > D > T 排前面的人
+ *   模擬器：外場被點的 2 人照「9 點 ← MT H2 D1 D2 D3 D4 → 3 點」分配。
+ *   內場（玩家回饋）：一側上下兩角各點 1 人；另一側上或下其中一角點 2 人，照 H > D > T 排前面的人
  *   補到同側空著那角的放置格，留下的人改放自己角落橫條靠中央那格（直條只留一顆荊棘，補位的人放完走得回來）。
- *   被點的人走過去時其他 Bot 讓路。外場隨機 2 人。
+ *   被點的人走過去時其他 Bot 讓路。
  * 荊棘叢生（小王）：0 詠唱；+cast 每個荊棘連線一人、內場南北各一對玩家互連，持續 18 秒，剩 5 秒時沒拉開就失誤。
- *   模擬器：荊棘直接連給攻略指定的拉線人（每側外場 H2、D2 拉北，D3、D4 拉南），沿環狀地板拉；
+ *   模擬器：荊棘直接連給小抄指定的拉線人（相對方向：H2 東北、D2 東南、D4 西北、D3 西南；
+ *   西平臺＝H2／D2 往北、D3／D4 往南，東平臺左右相反），沿環狀地板拉；MT、D1 留在小王腳下；
  *   內場同一側上下兩角各一人互連，各自跑到直條的上下兩端（約 7 格）。
  * 小王暗之泛濫：可打斷的全場 AOE；外場 MT 用插言打斷（玩家是外場 MT 時要自己按）。
  * 估計值：見 tuning.ts P3.seed／P3.thorn／P3.sbDeluge。
  */
-import { P3 } from '../../core/tuning';
+import { P2, P3, HIT, REACT } from '../../core/tuning';
 import { cellAt, cellUnder, cellsTouching, cellPath, cornerOfCell, neighbors, center, rel, zoneE, roleE, homeE, type Cell } from '../../core/p2';
-import { roleType } from '../../core/constants';
-import { cellGone, cellThorn } from '../../game/p2state';
 import { dist } from '../../core/geometry';
 import { hitCircle } from '../../core/hit';
-import type { Vec } from '../../core/constants';
+import { roleType, type Vec } from '../../core/constants';
 import { at, setCast, alertMsg, say, seqAdd, type Entity, type GameState } from '../../game/state';
 import { good, bad } from '../../game/results';
 import { isBot } from '../../game/bots';
-import { entIndex } from '../../game/p2state';
-import { cornerMembers, sendTo } from '../../game/p3plan';
+import { entIndex, cellGone, cellThorn } from '../../game/p2state';
+import { cornerMembers, sendTo, innerHome } from '../../game/p3plan';
 import { p2Goto } from '../../game/p2nav';
-import { failE, busy, allSettle, SIDES, outers, inners, ringWalk } from './common';
+import { failE, busy, allSettle, SIDES, outers, inners, ringWalk, outerGo } from './common';
+
+/** 原位在外場荊棘上、暫時讓開的人（荊棘叢生結束、荊棘消失時恢復） */
+const thornShifted = new Set<Entity>();
 
 /** 內場各角落放種子的格子：面向平臺的直條中段 */
 const SEED_CELL = [[1, 3], [6, 3], [1, 4], [6, 4]] as const;
@@ -35,9 +38,13 @@ const seedCell = (k: number): Cell => cellAt(SEED_CELL[k][0], SEED_CELL[k][1])!;
 /** 同一角落兩顆時，留在原角落的人放的格子：角落橫條靠中央那格（直條只留補位的人那顆荊棘，他放完才走得回來） */
 const seedCellAlt = (k: number): Cell => cellAt(k % 2 === 0 ? 3 : 4, k < 2 ? 1 : 6)!;
 
-/** 外場種子落點（相對座標 f, r）、其他人的站位 */
-const SEED_OUT: [number, number][] = [[-3.5, -2.8], [-3.5, 2.8]];
-const OTHER_OUT: [number, number][] = [[4, -1.2], [4, 1.2], [3, 0], [4.4, 0]];
+/**
+ * 外場種子落點（相對座標 f, r）：平臺南北邊緣的中間。攻略以內周為 12 點：9 點＝相對東（r > 0）、3 點＝相對西；
+ * 兩個被點的人照優先順序「9 點 ← MT H2 D1 D2 D3 D4 → 3 點」，順序在前的放 9 點。
+ */
+const SEED_OUT: [number, number][] = [[0, 4.5], [0, -4.5]];
+const SEED_ORDER = ['MT', 'H2', 'D1', 'D2', 'D3', 'D4'];
+const OTHER_OUT: [number, number][] = [[3.5, -1.2], [3.5, 1.2], [1.5, -1.2], [1.5, 1.2]];
 
 export function seeds(G: GameState, t0: number): number {
   const tag = '種子彈';
@@ -49,6 +56,7 @@ export function seeds(G: GameState, t0: number): number {
   at(G, tM, () => {
     SIDES.forEach((side) => {
       const outs = outers(G, side), picked = G.rng.shuffle(outs).slice(0, 2);
+      picked.sort((a, b) => SEED_ORDER.indexOf(roleE(a)) - SEED_ORDER.indexOf(roleE(b)));
       picked.forEach((e, i) => { targets.push(e); spot.set(e, rel(side, ...SEED_OUT[i])); });
       outs.filter((e) => !picked.includes(e)).forEach((e, i) => spot.set(e, rel(side, ...OTHER_OUT[i % 4])));
     });
@@ -78,6 +86,8 @@ export function seeds(G: GameState, t0: number): number {
     if (targets.includes(P)) alertMsg(G, '你被點了種子彈', 2, true);
     if (G.cfg.hint && !G.auto && spot.has(P)) G.hints = [{ ...spot.get(P)!, r: 1.2, label: targets.includes(P) ? '放種子' : '離開種子' }];
   });
+  // 詠唱中先讓內場都回到自己的角落（點名後才好讓路、走到放置格）
+  innerHome(G, t0 + 0.2, tM - 0.1);
   const locked = new Map<Entity, Vec>();
   at(G, tLock, () => targets.forEach((e) => {
     if (e.dead) return;
@@ -105,6 +115,15 @@ export function seeds(G: GameState, t0: number): number {
       [thorns[i], thorns[j]].forEach((t) => { const o = G.ents[t.owner]; if (!o.dead) failE(G, o, tag, '荊棘放太近，一起大爆炸'); });
     }
     s.thorns = thorns;
+    // 外場荊棘在平臺南北邊緣中間：原位剛好在荊棘上的人（例如 D3、D4）先往平臺外側讓 2.5 m
+    // （往外讓：從平臺上其他位置直線走過去都不會經過荊棘），荊棘消失後再回原位
+    G.ents.forEach((e) => {
+      if (e.dead || zoneE(e) === 'in') return;
+      const h = homeE(e);
+      if (!thorns.some((t) => t.cell < 0 && dist(h, t) < P3.seed.thornR + HIT + 0.4)) return;
+      e.seatHome = { x: h.x + Math.sign(h.x) * 2.5, y: h.y };
+      thornShifted.add(e);
+    });
     const P = G.player;
     if (locked.has(P) && !P.dead) good(G, tag, '放下種子，沒有打到人', { ...spot.get(P)!, r: 1.2, label: '放種子的位置' });
     else if (mineOk && !P.dead && spot.has(P)) good(G, tag, '沒被種子彈打中');
@@ -143,7 +162,15 @@ function thornWatch(G: GameState, from: number, until: number): void {
 /** 荊棘叢生的拉線點（以東、南為正）：外場荊棘拉到近的點、內場荊棘拉到遠的點 */
 const PULL_PT: Record<'outer' | 'inner', Vec> = { outer: { x: 15, y: 20 }, inner: { x: 6, y: 24.3 } };
 
-/** 內場連線的人要去的橫條末端格 */
+/**
+ * 荊棘叢生的誘導站位（攻略圖，相對座標 f, r；r > 0＝相對東＝西平臺的北）：荊棘連線最近的人，
+ * 所以詠唱時外場先站到自己要誘導的荊棘旁邊——H2 平臺外側偏北的角（平臺北邊的荊棘）、D2 平臺內側偏北（格子北邊的荊棘）、
+ * D3 平臺內側偏南、D4 平臺外側偏南的角；MT、D1 在小王腳下。
+ */
+const LURE: Record<string, [number, number]> = {
+  H2: [3.5, 4], D4: [3.5, -4], D2: [P2.px0 - P2.sbX + 1, 2.5], D3: [P2.px0 - P2.sbX + 1, -2.5], MT: [1, 0], D1: [-1, 0],
+};
+
 /** 內場連線的人要去的直條末端格：同一側上下兩角一對，上面的跑到上端、下面的跑到下端（約 7 格） */
 const pairEnd = (west: boolean, north: boolean): Cell => cellAt(west ? 1 : 6, north ? 0 : 7)!;
 /** 這一對是西邊還是東邊（看兩人的連線位置） */
@@ -155,8 +182,17 @@ export function thornTether(G: GameState, t0: number): number {
   const tL = t0 + P3.thorn.cast, tCheck = tL + P3.thorn.dur - P3.thorn.warnLeft;
   const pulls: { thorn: Vec; who: Entity; to: Vec }[] = [];
   const pairs: [Entity, Entity][] = [];
+  // 詠唱時：外場先站到誘導位置（荊棘會連線最近的人）
+  at(G, t0 + REACT, () => {
+    SIDES.forEach((side) => outers(G, side).forEach((e) => {
+      const l = LURE[roleE(e)];
+      if (l && isBot(G, e) && !e.dead) outerGo(G, e, rel(side, ...l));
+    }));
+    const P = G.player, l = LURE[roleE(P)];
+    if (l && zoneE(P) !== 'in' && G.cfg.hint && !G.auto) G.hints = [{ ...rel(zoneE(P) as -1 | 1, ...l), r: 1, label: roleE(P) === 'MT' || roleE(P) === 'D1' ? '留在小王腳下' : '站到要誘導的荊棘旁' }];
+  });
   at(G, t0, () => {
-    setCast(G, '荊棘叢生', P3.thorn.cast, '荊棘連線最近的人：外場沿環狀地板拉遠；內場兩人各跑到橫條兩端');
+    setCast(G, '荊棘叢生', P3.thorn.cast, '荊棘連線最近的人：外場先站到自己要誘導的荊棘旁（H2／D4 平臺外側角、D2／D3 平臺內側），連線後沿環狀地板拉遠；內場同一側上下兩角各 1 人連線，各跑到直條上下兩端');
     say(G, '生於黑暗之物正在操縱暗之植物……', 3);
     busy(G, tCheck + 2);
   });
@@ -164,12 +200,14 @@ export function thornTether(G: GameState, t0: number): number {
     const s = G.p2!;
     SIDES.forEach((side) => {
       const mine = s.thorns.filter((t) => Math.sign(t.x) === side);
-      const roles = { north: ['H2', 'D2'], south: ['D3', 'D4'] };
-      (['north', 'south'] as const).forEach((ns) => {
-        const ys = ns === 'north' ? -1 : 1;
+      // 小抄（イディル改，相對方向）：H2 相對東北、D2 相對東南、D4 相對西北、D3 相對西南。
+      // 相對東 = 西平臺的北、東平臺的南（相對西相反）；每一半「外側（平臺上）的荊棘」給 H2／D4、「內側（格子上）的」給 D2／D3
+      const roles = { relE: ['H2', 'D2'], relW: ['D4', 'D3'] };
+      (['relE', 'relW'] as const).forEach((half) => {
+        const ys = (half === 'relE' ? 1 : -1) * side;
         const th = mine.filter((t) => Math.sign(t.y || 0.01) === ys).sort((a, b) => Math.abs(b.x) - Math.abs(a.x));
         th.forEach((t, i) => {
-          const who = outers(G, side).find((e) => roleE(e) === roles[ns][i]);
+          const who = outers(G, side).find((e) => roleE(e) === roles[half][i]);
           if (!who) return;
           const p = PULL_PT[t.cell >= 0 ? 'inner' : 'outer'];
           pulls.push({ thorn: { x: t.x, y: t.y }, who, to: { x: side * p.x, y: ys * p.y } });
@@ -200,6 +238,7 @@ export function thornTether(G: GameState, t0: number): number {
       ...pulls.map((p) => ({ x: p.thorn.x, y: p.thorn.y, a: entIndex(G, p.who), until: tCheck })),
       ...pairs.map(([a, b]) => ({ a: entIndex(G, a), b: entIndex(G, b), until: tCheck })),
     ];
+    // 拉線：沿環狀地板拉（ringWalk 會自動經過平臺中線、平臺外緣，避開平臺南北邊緣中間的荊棘）
     pulls.forEach((p) => { if (isBot(G, p.who)) ringWalk(G, p.who, p.to, G.t + 0.3); });
     const P = G.player, myPull = pulls.find((p) => p.who === P), myPair = pairs.find((p) => p.includes(P));
     if (myPull || myPair) alertMsg(G, '你被荊棘叢生連線：拉遠', 2.2, true);
@@ -228,6 +267,9 @@ export function thornTether(G: GameState, t0: number): number {
     });
     s.links = [];
     s.thorns = [];
+    // 荊棘消失：讓開的人回原位
+    thornShifted.forEach((e) => { e.seatHome = undefined; });
+    thornShifted.clear();
   });
   allSettle(G, tCheck + 0.1);
   // 外場拉線的人沿環狀地板走回來
