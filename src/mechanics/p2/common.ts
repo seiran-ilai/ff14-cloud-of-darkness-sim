@@ -27,6 +27,12 @@ export const busy = (G: GameState, until: number): void => { G.p2!.busyUntil = M
  * 所以和魔法陣階段不同，機制之間要回座位（內場一格一格搬回去、外場沿環狀地板走回平臺）。
  */
 export function allSettle(G: GameState, t: number): void {
+  outerSettle(G, t);
+  innerHome(G, t, t + 6);
+}
+
+/** 只有外場回平臺待機位置 */
+export function outerSettle(G: GameState, t: number): void {
   at(G, t, () => {
     if (!G.p2) return;
     G.ents.forEach((e) => {
@@ -36,7 +42,6 @@ export function allSettle(G: GameState, t: number): void {
     });
     busy(G, G.t + 4);
   });
-  innerHome(G, t, t + 6);
 }
 
 /** 王（內場中央） */

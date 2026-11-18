@@ -13,15 +13,17 @@
  * 估計值：詠唱 5 秒、間隔 3 秒、半圓 15 m、分攤圓 2.2 m、直線寬 2 m（見 tuning.ts TRIPLE）。
  * TODO(確認): 兩隻小王的順序是否相同未知，目前各自隨機。
  */
-import { TRIPLE, TELE_SHOW } from '../../core/tuning';
+import { TRIPLE, TELE_SHOW, HIT } from '../../core/tuning';
 import { angOf, dist } from '../../core/geometry';
 import { hitHalf, hitCircle, hitRect } from '../../core/hit';
-import { rel, sbPos, sbFacing, zoneE, homeE, roleE, type Side } from '../../core/p2';
+import { rel, sbPos, sbFacing, zoneE, homeE, roleE, cellUnder, center, cornerOfCell, type Cell, type Side } from '../../core/p2';
 import type { Role, Vec } from '../../core/constants';
 import { at, setCast, alertMsg, seqAdd, type Entity, type Fix, type GameState } from '../../game/state';
 import { good, hurtPlayer, botHit } from '../../game/results';
 import { isBot } from '../../game/bots';
 import type { TripleKind } from '../../game/p2state';
+import { cornerMembers, rearrange } from '../../game/p3plan';
+import { busy } from './common';
 
 const NAME: Record<TripleKind, string> = { L: '左手單手球（左半場）', R: '右手單手球（右半場）', B: '雙手球（2 人分攤）', C: '黑霧（直線散開）' };
 const PAIR: Partial<Record<Role, Role>> = { H2: 'MT', D3: 'D1', D4: 'D2' };
@@ -44,8 +46,7 @@ export function tripleSpot(side: Side, role: Role, kind: TripleKind): Vec {
 /** 三擊的順序（符合攻略規則） */
 function sequence(G: GameState, noSniper: boolean): TripleKind[] {
   const one = (): TripleKind => (G.rng.chance(0.5) ? 'L' : 'R');
-  // 潛地式時的三重暗之戰技（攻略：只有分攤）：第一擊照規則是單手球，之後兩擊都是雙手球
-  if (noSniper) return [one(), 'B', 'B'];
+
   // 混沌迫近後不會用狙擊式（黑霧）
   const other: TripleKind = noSniper || G.rng.chance(0.5) ? 'B' : 'C';
   return G.rng.chance(0.5) ? [one(), one(), other] : [one(), other, one()];
@@ -80,8 +81,31 @@ export function triple(G: GameState, t0: number, noSniper = false): number {
       if (pzOf() === side) alertMsg(G, `第 ${k + 1} 個球：${NAME[kind]}（記住順序）`, TRIPLE.showFor, kind === 'B' || kind === 'C');
     }));
     at(G, show + TRIPLE.showFor, () => ([-1, 1] as Side[]).forEach((side) => { G.p2!.sb[side < 0 ? 0 : 1].glow = null; }));
+    // 內場：靠這一側小王的兩個角落，換到單手球打不到的格子。球的順序詠唱中就看得到，
+    // 所以第一擊在詠唱一開始、之後在上一擊一打完就開始換（一次只能走一格，3 秒常常不夠）
+    at(G, k === 0 ? t0 + 0.6 : hit - TRIPLE.gap + 0.2, () => {
+      // 內場這段時間不要去刷新格子（會走進半場範圍）
+      busy(G, hit + 0.5);
+      ([-1, 1] as Side[]).forEach((side) => {
+        const kind = seqs[side][k];
+        if (kind !== 'L' && kind !== 'R') return;
+        const c = sbPos(side), a = halfDir(side, kind);
+        const safe = (cell: Cell): boolean => !hitHalf(center(cell), c, TRIPLE.halfR, a, HIT + 0.3);
+        (side < 0 ? [0, 2] : [1, 3]).forEach((corner) => {
+          if (cornerMembers(G, corner).every((e) => !cellUnder(e) || safe(cellUnder(e)!))) return;
+          rearrange(G, corner, (_e, cell) => safe(cell), G.t, hit - 0.2);
+        });
+      });
+    });
     // 放招：不再亮球，照記住的順序處理（Bot 記得順序）
     at(G, hit - TRIPLE.tell, () => {
+      ([-1, 1] as Side[]).forEach((side) => {
+        const kind = seqs[side][k];
+        if (kind !== 'L' && kind !== 'R') return;
+        const c = sbPos(side), a = halfDir(side, kind);
+        const P = G.player, pc = cellUnder(P);
+        if (zoneE(P) === 'in' && pc && cornerOfCell(pc) === (side < 0 ? (pc.j <= 3 ? 0 : 2) : (pc.j <= 3 ? 1 : 3)) && hitHalf(center(pc), c, TRIPLE.halfR, a, HIT + 0.3)) alertMsg(G, `第 ${k + 1} 擊會打到你這格：換到打不到的格子`, 2, true);
+      });
       ([-1, 1] as Side[]).forEach((side) => {
         const kind = seqs[side][k];
         if (pzOf() === side) alertMsg(G, `第 ${k + 1} 擊`, 1.5);

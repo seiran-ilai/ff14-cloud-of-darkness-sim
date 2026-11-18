@@ -49,7 +49,7 @@ export const CATALOG: MechEntry[] = [
   { id: 'p3charge', phase: 'p3', name: '凝聚式／分散式波動炮', field: 'p3', seg: (G, t0) => chargeOrSpread(G, t0, G.rng.chance(0.5) ? 'charge' : 'spread') + 3 },
   { id: 'p3spin', phase: 'p3', name: '迴旋式＋跳躍波動炮', field: 'p3', seg: (G, t0) => { jump(G, t0 + 4); return spin(G, t0) + 3; } },
   { id: 'p3swap', phase: 'p3', name: '混沌迫近（換位）', field: 'p3', seg: (G, t0) => swap(G, t0) + 2 },
-  { id: 'p3dive', phase: 'p3', name: '潛地式波動炮', field: 'p3', seg: (G, t0) => { triple(G, t0 + 2, true); return dive(G, t0) + 3; } },
+  { id: 'p3dive', phase: 'p3', name: '潛地式波動炮', field: 'p3', seg: (G, t0) => { const tEnd = triple(G, t0 + 19, true); return Math.max(dive(G, t0) + 3, tEnd + 1); } },
   { id: 'p3impale', phase: 'p3', name: '磔殺（坦克死刑）', field: 'p3', seg: (G, t0) => impale(G, t0) + 1.5 },
   { id: 'p3interrupt', phase: 'p3', name: '小王暗之泛濫（打斷）', field: 'p3', seg: (G, t0) => sbDeluge(G, t0) + 1 },
 ];

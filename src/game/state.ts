@@ -126,7 +126,7 @@ export interface Extra {
   flareT?: number;
   holy?: boolean;
   arms?: { mode: BladeMode; until: number };
-  eyes?: { side: number; until: number };
+  eyes?: { pts: readonly Vec[]; until: number };
   orb?: StoredKind | null;
   beam?: Record<Alliance, Entity>;
 }

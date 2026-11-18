@@ -1,9 +1,12 @@
-# 推到 main 時：跑測試、打包，部署到 GitHub Pages
+# 部署到 GitHub Pages（同一個網站放兩個版本）：
+# - 測試版：main 分支 → 網站根目錄（原本的網址）
+# - 正式版：formal 分支 → /formal/ 底下（分支還沒建立時只部署測試版）
+# 推到任一分支都會把兩個版本一起重新打包，互不覆蓋。
 name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, formal]
   workflow_dispatch:
 
 permissions:
@@ -20,16 +23,42 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: test
+      - id: formal
+        name: 檢查有沒有 formal 分支
+        run: |
+          if git ls-remote --exit-code --heads "https://github.com/${{ github.repository }}" formal > /dev/null; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.formal.outputs.exists == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: formal
+          path: formal
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
-      - run: npm test
-      - run: npm run build
+          cache-dependency-path: '*/package-lock.json'
+      - name: 測試版（main）
+        working-directory: test
+        run: npm ci && npm test && npm run build
+      - name: 正式版（formal）
+        if: steps.formal.outputs.exists == 'true'
+        working-directory: formal
+        run: npm ci && npm test && npm run build
+      - name: 組合網站
+        run: |
+          mkdir site
+          cp -r test/dist/. site/
+          if [ -d formal/dist ]; then mkdir site/formal && cp -r formal/dist/. site/formal/; fi
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: site
   deploy:
     needs: build
     runs-on: ubuntu-latest

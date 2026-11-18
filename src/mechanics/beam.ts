@@ -18,7 +18,8 @@ const ORDER: Role[] = ['MT', 'ST', 'H1', 'D1', 'H2', 'D2', 'D3', 'D4'];
 
 /** 排隊位置：坦克在最前 */
 export function beamSlot(e: Pick<Entity, 'al' | 'role'>): Vec {
-  const d = beamDir(e.al), k = ORDER.indexOf(e.role), r = 12 + k * 1.25 + (k >= 2 ? 1.2 : 0);
+  // 站在三條線已經分開的地方（太靠王會同時吃到三隊的線）
+  const d = beamDir(e.al), k = ORDER.indexOf(e.role), r = BEAM.front + k * 1.25 + (k >= 2 ? 1.2 : 0);
   return { x: BOSS.x + d.x * r, y: BOSS.y + d.y * r };
 }
 

@@ -22,8 +22,9 @@ export interface SmallBoss {
   side: Side;
   /** 目前亮出的特效（判定前 tell 秒） */
   glow: TripleKind | null;
-  /** 跳躍波動炮：跳到的位置（沒有就在平臺中央） */
+  /** 跳躍波動炮：跳到的位置（沒有就在平臺中央）與面向 */
   at?: Vec | null;
+  atFace?: number;
 }
 
 /** 暗之荊棘：位置、佔用的格子（外場 −1）、種子主人（實體索引） */

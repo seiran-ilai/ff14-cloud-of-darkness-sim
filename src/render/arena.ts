@@ -1,5 +1,5 @@
 // 場地、格線、地面圖案、方位字：P1 開場是大圓形；P2 魔法陣是北角切平的菱形（王底下沒有地板）
-import { R } from '../core/constants';
+import { R, LANES } from '../core/constants';
 import { GEM_CUT, OPENER, FLOOR_V_Y } from '../core/tuning';
 import type { RenderState } from '../game/state';
 import { px, text } from './canvas';
@@ -67,8 +67,8 @@ export function drawArena(c: CanvasRenderingContext2D, G: Pick<RenderState, 'rou
   gemPath(c); c.clip();
   c.strokeStyle = 'rgba(160,140,210,.22)';
   c.lineWidth = px(1);
-  for (let k = 1; k < 4; k++) {
-    const t = k / 4;
+  for (let k = 1; k < LANES; k++) {
+    const t = k / LANES;
     c.beginPath(); c.moveTo(-R * (1 - t), -R * t); c.lineTo(R * t, R * (1 - t)); c.stroke();
     c.beginPath(); c.moveTo(R * (1 - t), -R * t); c.lineTo(-R * t, R * (1 - t)); c.stroke();
   }

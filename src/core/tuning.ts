@@ -31,7 +31,7 @@ export const EMBRACE = {
   /** 陰冷擁抱詠唱秒數（估計）；詠唱結束才上減益 */
   cast: 3,
   /** 攥魂之手矩形長度 = 一格（docs） */
-  handLen: 11,
+  handLen: 8.8,
   /** 矩形寬度（估計，docs【未知】） */
   handW: 4,
   /** 矩形起點在玩家身後的距離（估計） */
@@ -60,7 +60,7 @@ export const VOLLEY = {
 } as const;
 
 export const FLARE = {
-  cast: 5.5,
+  cast: 6.5,
   /** 丟到指定端點的容許距離（估計） */
   spotTol: 6,
   /** 沒被點的人至少要離目標多遠（估計） */
@@ -83,19 +83,26 @@ export const BLADE = {
   pocketR: 6.5,
   /** 雙手：王周圍大圓半徑（估計） */
   bothR: 17,
+  /** P2 雙手（鋼鐵）：幾乎蓋滿魔法陣的大橢圓，只剩東西角尖和南側（使用者截圖換算，估計） */
+  bothCY: -6,
+  bothRX: 30,
+  bothRY: 26,
 } as const;
 
 export const ENHANCE = { cast: 2.5 } as const;
 
 export const PETRIFY = {
   cast: 4.5,
-  /** 面向王或邪眼幾度內會石化（估計 ±60°） */
-  gazeAngle: Math.PI / 3,
+  /** 面向王或邪眼幾度內會石化（估計 ±50°；邪眼分在兩處時 ±60° 幾乎沒有安全方向） */
+  gazeAngle: (50 * Math.PI) / 180,
   /** 石化秒數（docs） */
   stoneDur: 9,
-  /** 邪眼在場外多遠、南北間距（估計） */
-  eyeOut: 2.5,
-  eyeY: 4.5,
+  /** 邪眼的三組位置（同一組兩個）：西側上下、東側上下、南側左右（使用者截圖，估計） */
+  eyes: {
+    W: [{ x: -27, y: -13 }, { x: -27, y: 13 }],
+    E: [{ x: 27, y: -13 }, { x: 27, y: 13 }],
+    S: [{ x: -14, y: 27 }, { x: 14, y: 27 }],
+  },
 } as const;
 
 export const AERO = {
@@ -112,8 +119,10 @@ export const DEATH = {
   /** 吸引距離與時間（估計） */
   pullDist: 16,
   pullTime: 0.7,
-  /** 中央圓半徑（估計） */
-  circleR: 10,
+  /** 中央圓半徑（估計：場地正中央那塊小菱形的大小） */
+  circleR: 6,
+  /** 離中心幾公尺以外算「端點」：被吸 pullDist 後會停在中央圓外（西、東、南三側） */
+  safeFrom: 22.5,
   /** 吸引後多久出中央圓預兆 / 判定（估計） */
   circleTele: 0.85,
   circleAt: 1.85,
@@ -125,7 +134,9 @@ export const DEATH = {
 export const BEAM = {
   cast: 4,
   /** 線寬（估計） */
-  width: 5,
+  width: 6.5,
+  /** 排最前面的人離王幾公尺（三條線在這之後才分開，估計） */
+  front: 17,
   /** 4 輪間隔（估計） */
   interval: 1.2,
 } as const;
@@ -199,8 +210,8 @@ export const TRIPLE = {
   tell: 3,
   show: 1.4,
   showFor: 1.1,
-  /** 單手球：小王左／右半場的半圓半徑（估計：蓋住整個平臺，碰到內場最外側格子的邊緣，站格子中央是安全的） */
-  halfR: 12.5,
+  /** 單手球：小王左／右半場的半圓半徑（使用者截圖換算：會切進內場左右直條，內場要躲到打不到的格子） */
+  halfR: 17,
   /** 雙手球：最近 3 人的 2 人分攤圓半徑（估計） */
   pairR: 2.2,
   /** 黑霧：最近 6 人的直線寬度的一半、長度（估計） */
@@ -214,7 +225,7 @@ export const WAVEBALL = {
   soak: 6,
   /** 外場三人塔：半徑、離小王的距離（估計） */
   outerR: 2.5,
-  outerD: 3.5,
+  outerD: 2.5,
 } as const;
 
 // ===================== P3 華容道：其餘機制（尺寸、秒數全部是估計） =====================
@@ -223,26 +234,26 @@ export const P3 = {
   /** 內場 Bot 換格：每一步的間隔（一次走一格） */
   stepDt: 0.7,
   /** 恐懼之雲：詠唱、環形內外半徑、十字半寬、恐怖秒數（docs 6 秒） */
-  fear: { cast: 5, r0: 12.5, r1: 21, crossHW: 4, stun: 6 },
+  fear: { cast: 5, r0: 14.1, r1: 26, crossHW: 10, stun: 6 },
   /** 波動詛咒：詠唱；詛咒式波動炮扇形半徑、半張角 */
   curse: { cast: 4, r: 20, w: (15 * Math.PI) / 180 },
   /** 種子彈：詠唱、點名到落地、圓形半徑、荊棘範圍、兩個荊棘太近會大爆炸的距離、荊棘佔格的寬限秒數 */
-  seed: { cast: 4, mark: 5, r: 3, thornR: 1.5, boom: 3, grace: 1 },
+  seed: { cast: 4, mark: 8, r: 3, thornR: 1.5, boom: 3, grace: 1 },
   /** 荊棘叢生：詠唱、連線秒數（docs 18 秒）、剩 5 秒時要拉開的距離（外場荊棘、內場兩人） */
-  thorn: { cast: 4, dur: 18, warnLeft: 5, pull: 14, pair: 26 },
+  thorn: { cast: 4, dur: 18, warnLeft: 5, pull: 14, pair: 22 },
   /** 小王暗之泛濫（可打斷） */
   sbDeluge: { cast: 6 },
   /** 凝聚式：詠唱、直線半寬、外場／內場需要的人數；分散式：圓形半徑、外場晚幾秒 */
   charge: { cast: 5, hw: 2.5, needOut: 4, needIn: 2 },
-  spread: { cast: 5, r: 3, outerDelay: 2 },
+  spread: { cast: 5, r: 5, outerDelay: 2 },
   /** 迴旋式：詠唱、5 擊間隔、每擊轉幾度、直線半寬、長度（只打內場） */
   spin: { cast: 5, gap: 1.4, step: (22.5 * Math.PI) / 180, hw: 1.5, len: 18 },
-  /** 跳躍波動炮：小王跳到平臺內側（相對 f）、扇形半徑、半張角、兩發間隔 */
-  jump: { f: -4, r: 10.5, w: Math.PI / 4, gap: 1.6 },
+  /** 跳躍波動炮：小王跳到平臺外側（相對 f）面向內場、扇形半徑、半張角、兩發間隔 */
+  jump: { f: 4, r: 10.5, w: Math.PI / 4, gap: 1.6 },
   /** 混沌迫近：詠唱、眩暈 */
   swap: { cast: 5, stun: 2 },
   /** 潛地式：詠唱、16 發的間隔、落在幾秒前的位置、圓形半徑 */
-  dive: { cast: 7, n: 16, gap: 0.6, lag: 1, r: 2.5 },
+  dive: { cast: 6, n: 16, gap: 0.3, lag: 1, r: 2.5 },
   /** 磔殺：詠唱、圓形半徑（坦克死刑） */
   impale: { cast: 4, r: 5 },
   /** 雲散：詠唱 */

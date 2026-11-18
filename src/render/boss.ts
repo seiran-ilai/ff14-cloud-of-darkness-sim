@@ -1,7 +1,7 @@
 // 王、暗之刃手臂、心臟與陰冷擁抱手勢、雲之魔刃標示、齊射雲、球、邪眼
-import { BOSS, R } from '../core/constants';
+import { BOSS } from '../core/constants';
 import { fromUV, laneC } from '../core/geometry';
-import { HALF } from '../core/constants';
+import { HALF, LANES } from '../core/constants';
 import { VOLLEY } from '../core/tuning';
 import type { Config } from '../core/config';
 import { EMBRACE_TEXT, type EmbraceType, type RenderState as GameState } from '../game/state';
@@ -75,7 +75,7 @@ export function drawPose(c: CanvasRenderingContext2D, type: EmbraceType, cfg: Co
 export function drawClouds(c: CanvasRenderingContext2D, G: GameState, cfg: Config): void {
   const cl = G.extra.clouds;
   if (!cl || G.t > cl.until) return;
-  (['U', 'V'] as const).forEach((fam) => [0, 1, 2, 3].forEach((i) => {
+  (['U', 'V'] as const).forEach((fam) => [...Array(LANES).keys()].forEach((i) => {
     const p = fam === 'U' ? fromUV(laneC(i), -HALF - VOLLEY.cloudOut) : fromUV(HALF + VOLLEY.cloudOut, laneC(i));
     const r = cl.rounds.find((r) => r.fam === fam && r.lanes.includes(i) && G.t >= r.glow && G.t < r.fire);
     const k = r ? cl.rounds.indexOf(r) + 1 : 0;
@@ -102,9 +102,7 @@ export function drawOrbAndEyes(c: CanvasRenderingContext2D, G: GameState): void 
     else { c.fillStyle = '#bfe9ff'; circle(c, 0, 0, 1.3 * p); c.fill(); }
   }
   if (G.extra.eyes && G.t < G.extra.eyes.until) {
-    const s = G.extra.eyes.side;
-    [-4.5, 4.5].forEach((y) => {
-      const x = s * (R + 2.5);
+    G.extra.eyes.pts.forEach(({ x, y }) => {
       c.fillStyle = '#2a0d16'; circle(c, x, y, 1.6); c.fill();
       c.strokeStyle = '#ff5d6c'; c.lineWidth = px(2); c.stroke();
       c.fillStyle = '#ff5d6c'; circle(c, x, y, 0.6); c.fill();

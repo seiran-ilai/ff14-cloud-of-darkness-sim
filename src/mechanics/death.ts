@@ -6,7 +6,7 @@
  *   沒開防擊退的人被往中心吸 min(pullDist, 距離)。吸引後離中心 < 5 m 給提醒（吸引傷害大幅提升）。
  * 估計值：吸引 16 m／0.7 秒、中央圓 10 m、圓炸後 2.6 秒判定環形（見 tuning.ts DEATH）。
  */
-import { O0, R } from '../core/constants';
+import { O0, type Vec } from '../core/constants';
 import { dist } from '../core/geometry';
 import { hitCircle, insideCircle } from '../core/hit';
 import { DEATH } from '../core/tuning';
@@ -19,18 +19,24 @@ export function death(G: GameState, t0: number, castLen: number): number {
   const tag = castLen ? '極死' : '極死（超賦）';
   if (castLen) seqAdd(G, t0, '極死');
   const tP = castLen ? t0 + castLen : t0 + DEATH.storedDelay;
-  const side = (e: Entity): number => (e.x < 0 ? -1 : 1);
+  // 端點：A 西、B 南、C 東（和核爆一樣分三邊）；離中心 safeFrom 以外都安全
+  const END: Record<string, Vec> = { A: { x: -24.5, y: 0 }, B: { x: 0, y: 24.5 }, C: { x: 24.5, y: 0 } };
+  const endOf = (e: Entity): Vec => END[e.al];
   const P = G.player;
-  const fixOut = (): Fix => ({ x: side(P) * (R - 2.8), y: 0, r: 2, label: castLen ? '先到東／西端，被吸後停在中央圓外' : '開防擊退，留在中央圓外' });
+  const fixOut = (): Fix => ({ ...endOf(P), r: 2, label: castLen ? '先到西／南／東端，被吸後停在中央圓外' : '開防擊退，留在中央圓外' });
   const fixIn: Fix = { x: 0, y: 0, r: DEATH.circleR - 0.5, label: '中央圓炸完後進中央' };
   at(G, t0, () => {
-    if (castLen) { say(G, '死亡不過是回歸於無的過程而已……', 3.5); setCast(G, '極死', castLen, '先到東或西端點，被吸到中央附近先停；中央圓炸完再進中央躲環形'); }
+    if (castLen) { say(G, '死亡不過是回歸於無的過程而已……', 3.5); setCast(G, '極死', castLen, '先到西、南或東端（離中心 23 m 外），被吸到中央附近先停；中央圓炸完再進中央躲環形'); }
     else { alertMsg(G, '雲之魔刃：極死', 1.8, true); G.stored = null; }
     G.extra.orb = 'death';
     if (castLen) {
-      // Bot：先到東或西端點
-      npcs(G).forEach((e) => { e.buffs.sprint = G.t + 6; e.mt = { x: side(e) * G.rng.rnd(R - 3.4, R - 2.2), y: G.rng.rnd(-1.2, 1.2) }; });
-      G.hints = [{ x: -(R - 2.5), y: 0, r: 2, label: '西端' }, { x: R - 2.5, y: 0, r: 2, label: '東端' }];
+      // Bot：先到端點（A 西、B 南、C 東）
+      npcs(G).forEach((e) => {
+        const p = endOf(e), j = G.rng.rnd(-1.5, 1.5), k = G.rng.rnd(0, 1.5);
+        e.buffs.sprint = G.t + 6;
+        e.mt = p.y ? { x: j, y: p.y + k } : { x: p.x + Math.sign(p.x) * k, y: j };
+      });
+      G.hints = [{ ...END.A, r: 2, label: '西端' }, { ...END.B, r: 2, label: '南端' }, { ...END.C, r: 2, label: '東端' }];
     } else {
       npcs(G).forEach((e) => { e.buffs.akb = tP + 1; });
       G.hints = [];
@@ -58,7 +64,7 @@ export function death(G: GameState, t0: number, castLen: number): number {
     if (c1 && !P.dead) hurtPlayer(G, tag, '被中央圓形打中（死亡宣告）', true, fixOut());
     G.ents.forEach((e) => { if (!e.isPlayer && !e.dead && hitCircle(e, O0, DEATH.circleR)) botHit(G, e, tag, '被中央圓形打中'); });
     // Bot：圓炸完進中央
-    npcs(G).forEach((e) => { const a = G.rng.rnd(0, 6.28), r = G.rng.rnd(0, 5); e.mt = { x: Math.sin(a) * r, y: -Math.cos(a) * r }; });
+    npcs(G).forEach((e) => { const a = G.rng.rnd(0, 6.28), r = G.rng.rnd(0, DEATH.circleR - 2.5); e.mt = { x: Math.sin(a) * r, y: -Math.cos(a) * r }; });
     G.tele.push({ k: 'donut', x: 0, y: 0, r: DEATH.circleR, until: G.t + (DEATH.donutAt - DEATH.circleAt) });
     G.hints = [{ x: 0, y: 0, r: DEATH.circleR - 0.5, label: '進中央' }];
   });
@@ -68,7 +74,7 @@ export function death(G: GameState, t0: number, castLen: number): number {
     if (P.dead) return;
     const ok = insideCircle(P, O0, DEATH.circleR);
     if (!c1) {
-      if (castLen && p0 >= 26.5) good(G, tag, `吸引前在場地端點（離中心 ${p0.toFixed(1)} m）`, fixOut());
+      if (castLen && p0 >= DEATH.safeFrom) good(G, tag, `吸引前在場地端點（離中心 ${p0.toFixed(1)} m）`, fixOut());
       if (!castLen) good(G, tag, '吸引後躲開了中央圓', fixOut());
       else good(G, tag, `吸引後離中心 ${p1.toFixed(1)} m，躲開中央圓`, fixOut());
     }

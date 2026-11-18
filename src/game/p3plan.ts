@@ -2,7 +2,7 @@
 // - rearrange：把一個角落的 Bot 搬到指定格子。每一步只動一個人、只走進「目前沒人碰到」的相鄰格，
 //   每步重新規劃（玩家當作會動的障礙物），所以不會擠格、不會互相卡死。
 // - dodge：有時間表的危險格（迴旋式）：先算好每一擊前每個人要站哪一格，再照表一格一格走。
-import { CELLS, cellUnder, cellsTouching, neighbors, center, cornerOfCell, homeE, zoneE, type Cell } from '../core/p2';
+import { CELLS, cellUnder, cellsTouching, cellPath, neighbors, center, cornerOfCell, homeE, zoneE, type Cell } from '../core/p2';
 import { P3 } from '../core/tuning';
 import { at, type Entity, type GameState } from './state';
 import { isBot } from './bots';
@@ -12,9 +12,12 @@ import { p2Goto } from './p2nav';
 /** 內場的人原本屬於哪個角落（西北 0、東北 1、西南 2、東南 3） */
 export const homeCorner = (e: Entity): number => cornerOfCell(cellUnder(homeE(e))!);
 
-/** 某個角落的內場成員（活著的） */
+/** 現在在哪個角落：站在格子上就看格子，否則看座位（放完種子可能被荊棘隔在別的角落） */
+export const curCorner = (e: Entity): number => { const c = cellUnder(e); return c ? cornerOfCell(c) : homeCorner(e); };
+
+/** 某個角落的內場成員（活著的，依現在站的位置） */
 export const cornerMembers = (G: GameState, k: number): Entity[] =>
-  G.ents.filter((e) => !e.dead && zoneE(e) === 'in' && homeCorner(e) === k);
+  G.ents.filter((e) => !e.dead && zoneE(e) === 'in' && curCorner(e) === k);
 
 /** 角落區裡能站的格子（沒消失、沒有荊棘） */
 export const zoneCells = (G: GameState, k: number): Cell[] =>
@@ -31,7 +34,8 @@ function blockedBy(G: GameState, bots: Entity[]): Set<number> {
 
 /** 在 t0～until 之間，把角落 k 的 Bot 搬到 goals 指定的格子（沒指定的人可以被擠到任何格） */
 /** goals：指定每個人的格子，或「這個人站這格可以嗎」（例如躲 AOE：任何安全格都行） */
-export function rearrange(G: GameState, k: number, goals: Map<Entity, Cell> | ((e: Entity, c: Cell) => boolean), t0: number, until: number, onDone?: () => void): void {
+/** fixed：這次不搬的人（自己會走，例如 sendTo 指定的人），當成障礙物 */
+export function rearrange(G: GameState, k: number, goals: Map<Entity, Cell> | ((e: Entity, c: Cell) => boolean), t0: number, until: number, onDone?: () => void, fixed?: Set<Entity>): void {
   let tok = -1;
   const tick = (): void => {
     if (!G.p2) return;
@@ -39,12 +43,12 @@ export function rearrange(G: GameState, k: number, goals: Map<Entity, Cell> | ((
     if (tok < 0) tok = ++G.p2.plan[k];
     else if (G.p2.plan[k] !== tok) return;
     if (G.t > until || !G.p2) return;
-    const bots = cornerMembers(G, k).filter((e) => isBot(G, e));
+    const bots = cornerMembers(G, k).filter((e) => isBot(G, e) && !fixed?.has(e));
     const cur = bots.map((e) => cellUnder(e)?.idx ?? -1);
     const goal = goals instanceof Map ? bots.map((e) => goals.get(e)?.idx ?? -1) : [];
     const done = (s: number[]): boolean => (goals instanceof Map
       ? s.every((c, i) => goal[i] < 0 || c === goal[i])
-      : s.every((c, i) => goals(bots[i], CELLS[c])));
+      : s.every((c, i) => c >= 0 && goals(bots[i], CELLS[c])));
     if (done(cur)) {
       // 到齊了：把每個人釘在現在的格子（取消進行中的刷新格子，免得剛好路過目標格就被算到齊又走掉）
       bots.forEach((e, i) => { const c = CELLS[cur[i]]; if (e.p2r?.phase !== 'idle' || !e.mt || cellUnder(e.mt) !== c) p2Goto(G, e, center(c)); });
@@ -96,15 +100,49 @@ export function rearrange(G: GameState, k: number, goals: Map<Entity, Cell> | ((
   at(G, t0, tick);
 }
 
+/**
+ * 指定幾個人（可以跨角落）走到指定格：其他 Bot 先讓開這些人要走的路（再加上 keep 的格子），
+ * 被指定的 Bot 再沿路走過去（被角落規劃釘回原地時會再叫一次），直到 until。
+ */
+export function sendTo(G: GameState, goals: Map<Entity, Cell>, until: number, keep: (c: Cell) => Cell[] = () => []): void {
+  const s = G.p2!, path = new Set<number>();
+  goals.forEach((c, e) => {
+    const from = cellUnder(e);
+    const p = from && cellPath(from, c, (x) => cellGone(s, x) || cellThorn(s, x));
+    (p ?? [c]).forEach((x) => path.add(x.idx));
+    keep(c).forEach((x) => path.add(x.idx));
+  });
+  const movers = new Set(goals.keys());
+  for (let k = 0; k < 4; k++) rearrange(G, k, (_e, c) => !path.has(c.idx), G.t, until, undefined, movers);
+  const walk = (e: Entity, c: Cell): void => {
+    if (e.dead || G.t > until || !G.p2) return;
+    if (cellUnder(e) !== c && (!e.mt || cellUnder(e.mt) !== c)) { e.buffs.sprint = G.t + 5; p2Goto(G, e, center(c)); }
+    at(G, G.t + 0.4, () => walk(e, c));
+  };
+  goals.forEach((c, e) => { if (isBot(G, e)) at(G, G.t + 1.2, () => walk(e, c)); });
+}
+
 /** 把所有內場 Bot 搬回自己的座位，最後站到座位的精確位置（讓刷新格子接手） */
 export function innerHome(G: GameState, t0: number, until: number): void {
   // 座位在執行時才讀（混沌迫近換位後座位會變）
   at(G, t0, () => {
+    // 座位在別的角落的人（被荊棘隔開）：走得過去就直接送回去，走不過去就先留在這個角落
+    const guests = new Map<Entity, Cell>();
+    G.ents.forEach((e) => {
+      if (e.dead || zoneE(e) !== 'in' || curCorner(e) === homeCorner(e)) return;
+      const from = cellUnder(e), to = cellUnder(homeE(e))!;
+      if (from && cellPath(from, to, (x) => cellGone(G.p2!, x) || cellThorn(G.p2!, x))) guests.set(e, to);
+    });
+    if (guests.size) sendTo(G, guests, until);
     for (let k = 0; k < 4; k++) {
+      if (guests.size) continue;
+      const home = (e: Entity): boolean => homeCorner(e) === k;
       const goals = new Map<Entity, Cell>();
-      cornerMembers(G, k).forEach((e) => goals.set(e, cellUnder(homeE(e))!));
-      rearrange(G, k, goals, G.t, until, () => cornerMembers(G, k).forEach((e) => { if (isBot(G, e)) p2Goto(G, e, homeE(e)); }));
+      cornerMembers(G, k).forEach((e) => { if (home(e)) goals.set(e, cellUnder(homeE(e))!); });
+      rearrange(G, k, goals, G.t, until, () => cornerMembers(G, k).forEach((e) => { if (isBot(G, e) && home(e)) p2Goto(G, e, homeE(e)); }));
     }
+    // 送完客人再整理一次
+    if (guests.size && until - G.t > 3) innerHome(G, G.t + Math.min(5, (until - G.t) / 2), until);
   });
 }
 
@@ -185,4 +223,17 @@ function follow(G: GameState, k: number, bots: Entity[], hz: Hazard[], path: num
       });
     });
   });
+}
+
+/**
+ * 格子裡不會被 hit 打到的站點（判定圈不碰到格子邊）：從格子中心開始，找離中心最近的安全點；整格都不安全回傳 null。
+ * 給「要站在格子靠某一側」的機制用（恐懼之雲十字、環形等）。
+ */
+export function cellSafePoint(c: Cell, hit: (p: { x: number; y: number }) => boolean): { x: number; y: number } | null {
+  const m = 0.7, pts: { x: number; y: number }[] = [];
+  for (let i = 0; i <= 4; i++) for (let j = 0; j <= 4; j++) {
+    pts.push({ x: c.x0 + m + ((c.x1 - c.x0 - 2 * m) * i) / 4, y: c.y0 + m + ((c.y1 - c.y0 - 2 * m) * j) / 4 });
+  }
+  pts.sort((a, b) => Math.hypot(a.x - c.cx, a.y - c.cy) - Math.hypot(b.x - c.cx, b.y - c.cy));
+  return pts.find((p) => !hit(p)) ?? null;
 }

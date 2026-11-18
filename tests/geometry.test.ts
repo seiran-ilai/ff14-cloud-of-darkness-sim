@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { toUV, fromUV, inArena, angDiff, laneOf, edgeDist, dirV, angOf } from '../src/core/geometry';
-import { R, HALF, CELL, BOSS } from '../src/core/constants';
+import { R, HALF, CELL, BOSS, LANES } from '../src/core/constants';
 
 describe('geometry', () => {
   it('toUV / fromUV 互逆', () => {
@@ -45,6 +45,6 @@ describe('geometry', () => {
   it('laneOf 夾在 0～3', () => {
     expect(laneOf(-HALF - 5)).toBe(0);
     expect(laneOf(-HALF + CELL * 1.5)).toBe(1);
-    expect(laneOf(HALF + 5)).toBe(3);
+    expect(laneOf(HALF + 5)).toBe(LANES - 1);
   });
 });

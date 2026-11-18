@@ -1,5 +1,5 @@
 // 座標慣例：x 往東、y 往南（畫面座標）；角度 0 = 北，順時針為正。
-import { R, HALF, CELL, type Vec } from './constants';
+import { R, HALF, CELL, LANES, type Vec } from './constants';
 import { GEM_CUT, OPENER } from './tuning';
 
 export const dirV = (a: number): Vec => ({ x: Math.sin(a), y: -Math.cos(a) });
@@ -37,10 +37,10 @@ export const angDiff = (a: number, b: number): number =>
 /** 轉成沿菱形邊的 (u,v) 座標：u 沿東南向、v 沿東北向 */
 export const toUV = (p: Vec): { u: number; v: number } => ({ u: (p.x + p.y) / Math.SQRT2, v: (p.x - p.y) / Math.SQRT2 });
 export const fromUV = (u: number, v: number): Vec => ({ x: (u + v) / Math.SQRT2, y: (u - v) / Math.SQRT2 });
-/** 第 i 列／行（0～3）的中心座標 */
+/** 第 i 列／行（0～LANES−1）的中心座標 */
 export const laneC = (i: number): number => -HALF + CELL * (i + 0.5);
-/** 座標落在第幾列／行（夾在 0～3） */
-export const laneOf = (c: number): number => Math.max(0, Math.min(3, Math.floor((c + HALF) / CELL)));
+/** 座標落在第幾列／行（夾在 0～LANES−1） */
+export const laneOf = (c: number): number => Math.max(0, Math.min(LANES - 1, Math.floor((c + HALF) / CELL)));
 
 /** 從中心沿角度 theta 走到離邊 inset 公尺處 */
 export function edgePoint(theta: number, inset: number): Vec {

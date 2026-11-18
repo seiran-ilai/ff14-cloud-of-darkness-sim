@@ -7,7 +7,7 @@
  *   模擬器：外場近 3 人＝D2、D3、D4，遠 3 人＝MT、H2、D1（攻略：外場的坦克＋補師＋DPS 進內場）；
  *   換位後改坐對方的座位（之後所有站位都照新座位）。
  * 潛地式（王）：台詞「你逃得掉嗎？」。內場每個角落點 1 人，在他身後連放 16 次圓形（落在 lag 秒前的位置）。
- *   處理（攻略）：被點者從角落格出發，沿井字外圈順時針跑一圈回來；其他人進凸出格讓路。
+ *   處理（攻略）：預兆一出來被點者就沿井字外圈順時針跑一圈回定點（16 發大約只追半圈）；其他人進凸出格讓路。
  * 磔殺（小王）：對外場 MT 的圓形死刑；其他人離開。
  * 雲散（小王）：小王消失（不判定）。
  * 估計值：見 tuning.ts P3.swap／P3.dive／P3.impale／P3.vanish。
@@ -22,8 +22,8 @@ import { good } from '../../game/results';
 import { isBot } from '../../game/bots';
 import { entIndex } from '../../game/p2state';
 import { p2Goto } from '../../game/p2nav';
-import { cornerMembers, rearrange } from '../../game/p3plan';
-import { failE, busy, allSettle, SIDES, outers } from './common';
+import { cornerMembers, rearrange, innerHome } from '../../game/p3plan';
+import { failE, busy, outerSettle, SIDES, outers } from './common';
 
 type Seat = { al: Alliance; role: Role };
 const seatKey = (s: Seat): string => `${s.al}-${s.role}`;
@@ -106,15 +106,16 @@ export function dive(G: GameState, t0: number): number {
   const tag = '潛地式波動炮';
   seqAdd(G, t0, '潛地式波動炮');
   const tS = t0 + P3.dive.cast;
-  const fires = Array.from({ length: P3.dive.n }, (_, k) => tS + 0.6 + k * P3.dive.gap);
+  // 詠唱結束（腳下出預兆）就開始跑；第一發落在 lag 秒前的位置，16 發大約追半圈
+  const fires = Array.from({ length: P3.dive.n }, (_, k) => tS + P3.dive.lag + k * P3.dive.gap);
   const end = fires[fires.length - 1];
   const targets: Entity[] = [];
   at(G, t0, () => {
-    setCast(G, '潛地式波動炮', P3.dive.cast, '內場每角點 1 人：被點的人從角落格順時針跑一圈；其他人進凸出格讓路');
+    setCast(G, '潛地式波動炮', P3.dive.cast, '內場每角點 1 人：被點的人詠唱一結束就沿外圈順時針跑一圈回角落格（追擊約半圈就停）；其他人進凸出格讓路');
     say(G, '你逃得掉嗎？', 3);
-    busy(G, end + 3);
+    busy(G, tS + 13);
   });
-  at(G, t0 + 0.8, () => {
+  at(G, t0 + 0.5, () => {
     for (let k = 0; k < 4; k++) {
       const m = cornerMembers(G, k);
       if (!m.length) continue;
@@ -131,16 +132,16 @@ export function dive(G: GameState, t0: number): number {
       others.forEach((e, i) => goals.set(e, prot[i]));
       rearrange(G, k, goals, G.t, tS);
       const P = G.player;
-      if (G.cfg.hint && !G.auto && goals.has(P)) G.hints = [{ ...center(goals.get(P)!), r: 1.2, label: P === tg ? '到角落格準備跑' : '進凸出格讓路' }];
+      if (G.cfg.hint && !G.auto && goals.has(P)) G.hints = [{ ...center(goals.get(P)!), r: 1.2, label: P === tg ? '到角落格，詠唱結束就跑' : '進凸出格讓路' }];
     }
-    if (targets.includes(G.player)) alertMsg(G, '你被潛地式點名：順時針跑一圈', 2.5, true);
+    if (targets.includes(G.player)) alertMsg(G, '你被潛地式點名：詠唱結束就順時針跑，不要停', 2.5, true);
   });
   // 被點的人沿外圈順時針跑：到一個角落格就換下一個
   at(G, tS, () => {
     G.hints = [];
     targets.forEach((tg) => {
       if (!isBot(G, tg)) return;
-      const k0 = LOOP.indexOf(cornerOfCell(cellUnder(homeE(tg))!));
+      const k0 = LOOP.indexOf(cornerOfCell(cellUnder(tg) ?? cellUnder(homeE(tg))!));
       let step = 1, sent = 0;
       const go = (): void => {
         if (tg.dead || step > 4 || !G.p2) return;
@@ -155,7 +156,7 @@ export function dive(G: GameState, t0: number): number {
       go();
     });
     const P = G.player;
-    if (targets.includes(P) && G.cfg.hint && !G.auto) alertMsg(G, '順時針跑一圈回到角落格', 2);
+    if (targets.includes(P) && G.cfg.hint && !G.auto) alertMsg(G, '開始跑！沿外圈順時針跑一圈', 2);
   });
   // 追擊：落在 lag 秒前的位置
   fires.forEach((tf, i) => {
@@ -167,7 +168,7 @@ export function dive(G: GameState, t0: number): number {
     }));
     at(G, tf, () => spots.forEach((p) => G.ents.forEach((e) => {
       if (e.dead || !hitCircle(e, p, P3.dive.r)) return;
-      failE(G, e, tag, `第 ${i + 1} 發追擊打中`, { ...homeE(e), r: 1, label: targets.includes(e) ? '一直跑，不要停' : '進凸出格讓路' });
+      failE(G, e, tag, `第 ${i + 1} 發追擊打中`, { ...homeE(e), r: 1, label: targets.includes(e) ? '預兆出來就跑，不要停' : '進凸出格讓路' });
     })));
   });
   at(G, end + 0.1, () => {
@@ -175,7 +176,9 @@ export function dive(G: GameState, t0: number): number {
     const P = G.player;
     if (zoneE(P) === 'in' && !P.dead && !G.fails.some((f) => f.startsWith(tag))) good(G, tag, targets.includes(P) ? '跑完一圈，追擊都沒打中' : '讓路成功，沒被追擊打中');
   });
-  allSettle(G, end + 0.4);
+  // 外場沒事：一開始就回待機位置；內場等被點的人跑完一圈（約 10 秒）回到角落格後才回座位
+  outerSettle(G, t0 + 0.3);
+  innerHome(G, tS + 11.5, tS + 17.5);
   return end;
 }
 

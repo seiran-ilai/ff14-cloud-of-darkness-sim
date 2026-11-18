@@ -99,7 +99,7 @@ export function drawP2Bosses(c: CanvasRenderingContext2D, G: RenderState): void 
   text(c, '暗黑之雲', 0, 0, 12, '#eae4fb');
   if (G.p2!.vanished) return;
   G.p2!.sb.forEach((b) => {
-    const p = b.at ?? sbPos(b.side), f = dirV(sbFacing(b.side)), r = { x: -f.y, y: f.x };
+    const p = b.at ?? sbPos(b.side), f = dirV(b.atFace ?? sbFacing(b.side)), r = { x: -f.y, y: f.x };
     const glowL = b.glow === 'L' || b.glow === 'B', glowR = b.glow === 'R' || b.glow === 'B';
     // 觸手：左右兩隻
     [[-1, glowL], [1, glowR]].forEach(([s, on]) => {

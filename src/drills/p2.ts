@@ -57,9 +57,10 @@ export function p3Seg(G: GameState, t0: number): number {
   fear(G, a);
   const b = a + 10;
   const c1 = curse(G, b, [7, 33, 97]);
-  const c = b + 6;
+  // 種子點名在第一次詛咒（7 秒）放完之後，外場被點的人才不會邊走邊放詛咒
+  const c = b + 8;
   seeds(G, c);
-  const d = c + 12;
+  const d = c + 15;
   fear(G, d);
   const e = d + 8;
   thornTether(G, e);
@@ -72,7 +73,8 @@ export function p3Seg(G: GameState, t0: number): number {
   const h = g + 6;
   spin(G, h);
   jump(G, h + 4);
-  const i = h + 14;
+  // 第一次詛咒最長 97 秒：全部放完才換位（換位前上的詛咒不會留到換位後）
+  const i = Math.max(h + 14, c1 + 3);
   swap(G, i);
   const j = i + 9;
   const jEnd = jump(G, j + 1);
@@ -80,12 +82,13 @@ export function p3Seg(G: GameState, t0: number): number {
   const c2 = curse(G, j + 8, [25, 56, 104]);
   const k = wEnd + 3;
   dive(G, k);
-  triple(G, k + 2, true);
-  const l = k + 20;
+  // 三重暗之戰技等潛地式被點的人跑完一圈、25 秒的詛咒放完才開始（內場要躲單手球、外場要站位）
+  triple(G, k + 19, true);
+  const l = k + 32;
   fear(G, l);
   const m = l + 9;
   jump(G, m);
-  const n = m + 8;
+  const n = m + 10;
   chargeOrSpread(G, n, first === 'charge' ? 'spread' : 'charge');
   const o = n + 10;
   sbDeluge(G, o);
@@ -129,7 +132,7 @@ export const p2: Record<string, Drill> = {
       enterP2(G);
       seqAdd(G, 0, '格子刷新練習');
       const inner = zoneE(G.player) === 'in';
-      at(G, 0.5, () => alertMsg(G, inner ? `撐過 ${GRID_SECS} 秒：記得換格刷新` : '你的座位在外場，沒有格子', 3));
+      at(G, 0.5, () => alertMsg(G, inner ? `同一格站滿 45 秒會消失：記得換格刷新（練習 ${GRID_SECS} 秒）` : '你的座位在外場，沒有格子', 3));
       at(G, GRID_SECS, () => {
         if (G.player.dead) return;
         if (inner) good(G, '格子', `撐過 ${GRID_SECS} 秒，格子沒有消失`);

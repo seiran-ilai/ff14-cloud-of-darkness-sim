@@ -7,9 +7,10 @@ export interface Vec { x: number; y: number }
 export const R = 31;
 /** 王的位置：北角內側 */
 export const BOSS: Readonly<Vec> = { x: 0, y: -20 };
-/** 菱形在 (u,v) 座標是半邊長 HALF 的正方形，切成 4×4 格 */
+/** 菱形在 (u,v) 座標是半邊長 HALF 的正方形，切成 LANES×LANES 格（實戰每側 5 道波動炮） */
 export const HALF = R / Math.SQRT2;
-export const CELL = HALF / 2;
+export const LANES = 5;
+export const CELL = (2 * HALF) / LANES;
 export const O0: Readonly<Vec> = { x: 0, y: 0 };
 
 export const ROLES = ['MT', 'ST', 'H1', 'H2', 'D1', 'D2', 'D3', 'D4'] as const;

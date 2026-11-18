@@ -63,7 +63,7 @@ export function tl1Seg(G: GameState, t0: number, end: TlEnd = 'game'): number {
   volley(G, t0 + 10);
   // 攻略：齊射途中點名核爆（估計在第 3 發，t0+7.5），核爆後立刻詠唱黑暗神聖
   flare(G, t0 + 17.5);
-  holy(G, t0 + 23.3);
+  holy(G, t0 + 24.3);
   blade(G, t0 + 29.6, m1);
   seqAdd(G, t0 + 29.6, '暗之刃');
   enhance(G, t0 + 44, k);
@@ -89,7 +89,7 @@ export function tl2Seg(G: GameState, t0: number, end: TlEnd = 'game'): number {
   beam(G, t0 + 32);
   volley(G, t0 + 66.3);
   // 攻略：約第 3 發時開始詠唱暗之刃（t0+7.5）
-  bladeRelease(G, t0 + 73.8, m, k2);
+  bladeRelease(G, t0 + 75, m, k2);
   flare(G, t0 + 87);
   return tlEnd(G, t0 + 113, end);
 }

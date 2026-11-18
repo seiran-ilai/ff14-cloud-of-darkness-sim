@@ -65,8 +65,15 @@ export function step(G: GameState, input: InputState, dt: number): void {
       }
       if (L > 0) {
         mx /= L; my /= L;
+        const ox = P.x, oy = P.y;
         P.x += mx * step;
         P.y += my * step;
+        // 華容道：內場和平臺之間一般移動過不去（像牆，突進／位移可以過）；走不過去就沿邊滑，再不行就停住
+        if (G.p2 && p2Walkable(G.p2, { x: ox, y: oy }) && !p2Walkable(G.p2, P)) {
+          if (p2Walkable(G.p2, { x: P.x, y: oy })) P.y = oy;
+          else if (p2Walkable(G.p2, { x: ox, y: P.y })) P.x = ox;
+          else { P.x = ox; P.y = oy; }
+        }
         if (G.cfg.auto && !input.rmb) P.face = angOf(mx, my);
       }
       if (input.rmb) {
@@ -74,7 +81,8 @@ export function step(G: GameState, input: InputState, dt: number): void {
         if (Math.hypot(dx, dy) > 0.3) P.face = angOf(dx, dy);
       }
     }
-    if (!onFloor(G, P)) fall(G);
+    // 位移途中不算掉落（突進可以越過空隙），落地時才判定
+    if (!P.forced && !onFloor(G, P)) fall(G);
   }
   if (G.auto && !P.dead && !onFloor(G, P)) fall(G);
   G.ents.forEach((e) => {

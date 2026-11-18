@@ -7,7 +7,7 @@
  * 估計值：時間、雲的方位（見 tuning.ts VOLLEY）。
  */
 import { HIT, VOLLEY } from '../core/tuning';
-import { HALF, CELL, type Vec } from '../core/constants';
+import { HALF, CELL, LANES, type Vec } from '../core/constants';
 import { toUV, fromUV, laneC, laneOf, voidDist } from '../core/geometry';
 import { at, alertMsg, seqAdd, type Entity, type GameState, type LaneFam, type VolleyPlan, type VolleyRound } from '../game/state';
 import { good, hurtPlayer, botHit } from '../game/results';
@@ -40,9 +40,9 @@ const isVoidCell = (u: number, v: number): boolean => { const s = cellStand(u, v
  * 成本＝移動列數＋最後離中央的距離（攻略站交會點旁，結束時靠中央，下一個機制才跑得到）。
  */
 export function planCells(cu: number, cv: number, first: { U: number[]; V: number[] }, uFirst: boolean): { su: number; fu: number; sv: number; fv: number } | null {
-  const axis = (cur: number, s: number, f: number): number => Math.abs(cur - s) * 2 + Math.abs(s - f) + Math.abs(f - 1.5) * 0.9;
+  const axis = (cur: number, s: number, f: number): number => Math.abs(cur - s) * 2 + Math.abs(s - f) + Math.abs(f - (LANES - 1) / 2) * 0.9;
   let best: { su: number; fu: number; sv: number; fv: number } | null = null, bestCost = Infinity;
-  for (let su = 0; su < 4; su++) for (let sv = 0; sv < 4; sv++) {
+  for (let su = 0; su < LANES; su++) for (let sv = 0; sv < LANES; sv++) {
     if (first.U.includes(su) || first.V.includes(sv)) continue;
     for (const fu of first.U) for (const fv of first.V) {
       const mid = uFirst ? [fu, sv] : [su, fv];
@@ -61,7 +61,7 @@ export function volley(G: GameState, t0: number): number {
   seqAdd(G, t0, '齊射式波動炮');
   const f1: LaneFam = rng.chance(0.5) ? 'U' : 'V', f2: LaneFam = f1 === 'U' ? 'V' : 'U';
   const split = (): [number[], number[]] => {
-    const n = rng.chance(0.5) ? 2 : 3, idx = rng.shuffle([0, 1, 2, 3]);
+    const n = rng.chance(0.5) ? 2 : 3, idx = rng.shuffle([...Array(LANES).keys()]);
     return [idx.slice(0, n).sort(), idx.slice(n).sort()];
   };
   // 只剩王底下那一格安全的組合不會出現（重抽）

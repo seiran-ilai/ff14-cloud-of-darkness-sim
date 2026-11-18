@@ -36,7 +36,7 @@ function chargeCell(e: Entity): Cell {
 }
 
 /** 分散式：外場站位（相對 f, r） */
-const SPREAD_OUT: Record<string, [number, number]> = { MT: [-3.5, 3.5], H2: [-3.5, -3.5], D1: [3.5, 3.5], D2: [3.5, -3.5], D3: [0, 9.5], D4: [0, -9.5] };
+const SPREAD_OUT: Record<string, [number, number]> = { MT: [-4, 3], H2: [-4, -3], D1: [3.5, 3.5], D2: [3.5, -3.5], D3: [0, 9.5], D4: [0, -9.5] };
 
 export function chargeOrSpread(G: GameState, t0: number, kind: ChargeKind): number {
   const tag = CHARGE_NAME[kind];
