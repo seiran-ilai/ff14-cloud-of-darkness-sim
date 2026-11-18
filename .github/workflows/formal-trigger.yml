@@ -1,0 +1,14 @@
+# 推到 formal（正式版）時只做一件事：觸發 main 上的部署（pages.yml）。
+# GitHub Pages 的部署環境只允許 main 分支部署，所以正式版不能直接從 formal 部署；
+# pages.yml 用 workflow_run 接這個工作流程，在 main 上把兩個版本一起打包部署。
+name: Formal updated
+
+on:
+  push:
+    branches: [formal]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "formal 分支更新：交給 Deploy to GitHub Pages 重新部署"

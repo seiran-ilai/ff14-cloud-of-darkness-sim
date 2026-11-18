@@ -2,11 +2,15 @@
 # - 測試版：main 分支 → 網站根目錄（原本的網址）
 # - 正式版：formal 分支 → /formal/ 底下（分支還沒建立時只部署測試版）
 # 推到任一分支都會把兩個版本一起重新打包，互不覆蓋。
+# Pages 只允許 main 部署：推 formal 時由 formal-trigger.yml（Formal updated）完成後觸發這裡，仍在 main 上執行。
 name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main, formal]
+    branches: [main]
+  workflow_run:
+    workflows: [Formal updated]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
